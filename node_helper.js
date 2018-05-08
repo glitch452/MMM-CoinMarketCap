@@ -5,31 +5,34 @@
  * MIT Licensed.
  */
  
-var request = require('request')
+var request = require('request');
 var NodeHelper = require("node_helper");
 
 module.exports = NodeHelper.create({
 	
 	start: function () {
-		console.log('MMM-CoinMarketCap module loaded!')
+		console.log('MMM-CoinMarketCap module loaded!');
 	},
-
-	getDataFromURL: function(sourceURL, requestID) {
+	
+	getAndReturnJSON: function(notification, payload) {
 		var self = this;
-		request({ url: sourceURL, method: 'GET' }, function (error, response, body) {
+		request({ url: payload.url, method: 'GET' }, function (error, response, body) {
+			var result;
 			if (!error && response.statusCode === 200) {
-				var result = { id: requestID, status: 'ok', statusCode: response.statusCode, url: sourceURL, data: JSON.parse(body) };
+				result = { isSuccessful: true, statusCode: response.statusCode, data: JSON.parse(body) };
 			} else {
-				var result = { id: requestID, status: 'error', statusCode: response.statusCode, url: sourceURL, data: null };
+				result = { isSuccessful: false, statusCode: response.statusCode, data: error };
 			}
-			self.sendSocketNotification("JSON_RECEIVED", result);
+			self.sendSocketNotification(notification, result);
 		});
 	},
 	
 	socketNotificationReceived: function(notification, payload) {
 		var self = this;
-		if (notification === "GET_JSON") {
-			self.getDataFromURL(payload.url, payload.id);
+		if (notification === "GET_LISTINGS") {
+			self.getAndReturnJSON("LISTINGS_RECEIVED", payload);
+		} else if (notification === "GET_CURRENCY_DETAILS") {
+			self.getAndReturnJSON("CURRENCY_DETAILS_RECEIVED", payload);
 		}
 	},
 	
