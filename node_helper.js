@@ -19,9 +19,9 @@ module.exports = NodeHelper.create({
 		request({ url: payload.url, method: 'GET' }, function (error, response, body) {
 			var result;
 			if (!error && response.statusCode === 200) {
-				result = { isSuccessful: true, statusCode: response.statusCode, data: JSON.parse(body) };
+				result = { isSuccessful: true, original: payload, response: response, data: JSON.parse(body) };
 			} else {
-				result = { isSuccessful: false, statusCode: response.statusCode, data: error };
+				result = { isSuccessful: false, original: payload, response: response, data: error };
 			}
 			self.sendSocketNotification(notification, result);
 		});

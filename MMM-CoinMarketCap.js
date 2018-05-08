@@ -10,8 +10,8 @@
 Module.register('MMM-CoinMarketCap', {
 	defaults: {
 		currencies: [ { id: 1 }, { id: 1027 }, { id: 1592 } ],
-		//updateInterval: 60000,
-		retryDelay: 5
+		updateInterval: 10, // Minutes, minimum 5
+		retryDelay: 5 // Seconds
 	},
 
 	requiresVersion: '2.1.0', // Required version of MagicMirror
@@ -20,12 +20,13 @@ Module.register('MMM-CoinMarketCap', {
 		var self = this;
 		self.loaded = false;
 		self.listings = null;
+		self.currencies = {};
 		self.apiBaseURL = 'https://api.coinmarketcap.com/';
 		self.apiVersion = 'v2/';
 		self.apiListingsEndpoint = 'listings/';
+		self.maxListingAttempts = 4; // How many times to try downloading the listing before giving up and displaying an error
 		self.apiTickerEndpoint = 'ticker/';
-		self.tickerURL = self.apiBaseURL + self.apiVersion + self.apiTickerEndpoint;
-		self.maxAttempts = 2;
+		self.maxTickerAttempts = 2; // How many times to try updating a currency before giving up
 		
 		// Process and validate configuration options
 		if (!axis.isArray(self.config.currencies)) { self.config.currencies = self.defaults.currencies; }
@@ -39,20 +40,35 @@ Module.register('MMM-CoinMarketCap', {
 		}
 		if (axis.isNumber(self.config.retryDelay) && self.config.retryDelay >= 0) { self.config.retryDelay = self.config.retryDelay * 1000; }
 		else { self.config.retryDelay = self.defaults.retryDelay * 1000; }
+		if (axis.isNumber(self.config.updateInterval) && self.config.updateInterval >= 5) { self.config.updateInterval = self.config.updateInterval * 60* 1000; }
+		else { self.config.updateInterval = self.defaults.updateInterval * 60 * 1000; }
 		
-		self.getListings();
+		self.getListings(1);
 	},
 	
-	getListings: function() {
+	scheduleUpdate: function() {
+        var self = this;
+        setInterval(function() { self.getAllCurrencyDetails(); }, self.config.updateInterval);
+    },
+	
+	getListings: function(attemptNum) {
 		var self = this;
 		var url = self.apiBaseURL + self.apiVersion + self.apiListingsEndpoint;
-		self.sendSocketNotification('GET_LISTINGS', { url: url } );
+		self.sendSocketNotification('GET_LISTINGS', { url: url, attemptNum: attemptNum } );
 	},
 	
-	getCurrencyDetails: function(id, attemptNum) {
+	getSingleCurrencyDetails: function(id, attemptNum) {
 		var self = this;
-		var url = self.apiBaseURL + self.apiVersion + self.apiListingsEndpoint + id + '/';
-		self.sendSocketNotification('GET_CURRENCY_DETAILS', { url: url , attemptNum: attemptNum } );
+		var url = self.apiBaseURL + self.apiVersion + self.apiTickerEndpoint + id + '/';
+		self.sendSocketNotification('GET_CURRENCY_DETAILS', { url: url, attemptNum: attemptNum } );
+	},
+	
+	getAllCurrencyDetails: function() {
+		var self = this;
+		for (var key in self.currencies) {
+			if (!self.currencies.hasOwnProperty(key)) { continue; }
+			getSingleCurrencyDetails(key, 1);
+		}
 	},
 	
 	// socketNotificationReceived from node_helper
@@ -60,44 +76,40 @@ Module.register('MMM-CoinMarketCap', {
 		var self = this;
 		if (notification === 'LISTINGS_RECEIVED') {
 			if (payload.isSuccessful) {
-				//Log.log('MMM-CoinMarketCap: Listings retrieved successfully!');
+				Log.log('MMM-CoinMarketCap: Listings retrieved successfully!');
 				self.listings = payload.data.data;
 				self.validateCurrenciesAgainstListings();
-				if (self.config.currencies.length < 1) { self.config.currencies = self.defaults.currencies; }
 				self.loaded = true;
 				self.updateDom(0);
+				self.getAllCurrencyDetails();
+				self.scheduleUpdate();
+			} else if (payload.original.attemptNum < self.maxListingAttempts) {
+				setTimeout(function() { self.getListings(payload.original.attemptNum + 1); }, 8000);
 			} else {
-				setTimeout(function() { self.getListings(); }, self.config.retryDelay);
+				if (payload.data) { self.listings = payload.data; }
+				else { self.listings = payload.response.statusCode; }
+				self.loaded = true;
+				self.updateDom(0);
 			}
 		} else if (notification === 'CURRENCY_DETAILS_RECEIVED') {
-			/*
 			if (payload.isSuccessful) {
-				//Log.log('MMM-CoinMarketCap: Listings retrieved successfully!');
-				self.listings = payload.data.data;
-				self.validateCurrenciesAgainstListings();
-				if (self.config.currencies.length < 1) { self.config.currencies = self.defaults.currencies; }
-				self.loaded = true;
+				Log.log('MMM-CoinMarketCap: Currency Update Received for ID: ' + payload.original.id);
+				self.updateCurrency(payload.data.data);
 				self.updateDom(0);
-			} else {
-				setTimeout(function() { self.getListings(); }, self.config.retryDelay);
-			}*/
-			
+			} else if (payload.original.attemptNum < self.maxTickerAttempts) {
+				setTimeout(function() { self.getCurrencyDetails(payload.original.id, payload.original.attemptNum + 1); }, self.config.retryDelay);
+			}
 		}
 	},
 	
 	validateCurrenciesAgainstListings: function() {
 		var self = this;
-		var i;
-		for (i = self.config.currencies.length - 1; i >= 0; i--) {
-			var listing = self.selectListing(self.config.currencies[i].id, self.config.currencies[i].name);
-			if (axis.isUndefined(listing)) {
-				self.config.currencies.splice(i, 1);
-			} else {
-				self.config.currencies[i].id = listing.id;
-				self.config.currencies[i].name = listing.name;
-				self.config.currencies[i].symbol = listing.symbol;
+		self.config.currencies.forEach(function(c){
+			var listing = self.selectListing(c.id, c.name);
+			if (!axis.isUndefined(listing)) {
+				self.currencies[c.id] = { id: listing.id, name: listing.name, symbol: listing.symbol, loaded: false };
 			}
-		}
+		});
 	},
 	
 	selectListing: function(id, name) {
@@ -113,6 +125,13 @@ Module.register('MMM-CoinMarketCap', {
 		}, { id: id, name: name });
 	},
 	
+	updateCurrency: function(data) {
+		var self = this;
+		self.currencies[data.id].loaded = true;
+		
+		
+	},
+	
 	getDom: function() {
 		
 		// Initialize some variables
@@ -125,9 +144,9 @@ Module.register('MMM-CoinMarketCap', {
 			return wrapper;
 		}
 		
-		if (self.listings === null) {
-			//wrapper.innerHTML += 'Unable to get data from CoinMarketCap.com';
-			wrapper.innerHTML += 'Status: ' + self.listingResponse.status + ' - statusCode: ' + self.listingResponse.statusCode + '<br />URL: ' + self.listingResponse.url;
+		if (!axis.isArray(self.listings)) {
+			wrapper.innerHTML += 'Unable to get data from CoinMarketCap.com';
+			wrapper.innerHTML += '<br />Error: ' + self.listings;
 			return wrapper;
 		}
 		
@@ -135,11 +154,23 @@ Module.register('MMM-CoinMarketCap', {
 		var listContainer = document.createElement("ul");
 		listContainer.classList.add("fa-ul");
 		
+		
+		for (var key in self.currencies) {
+			if (!self.currencies.hasOwnProperty(key)) { continue; }
+			var c = self.currencies[key];
+			if (!c.loaded) { continue; }
+			var newListItem = document.createElement("li");
+			newListItem.innerHTML += JSON.stringify(c);
+			//newListItem.innerHTML += c.name + ' (' + c.id + '): ' + c.symbol;
+			listContainer.appendChild(newListItem);
+		}
+		
+		/*
 		self.config.currencies.forEach(function(c) {
 			var newListItem = document.createElement("li");
 			newListItem.innerHTML += c.name + ' (' + c.id + '): ' + c.symbol;
 			listContainer.appendChild(newListItem);
-		});
+		});*/
 		
 		wrapper.appendChild(listContainer);
 		
