@@ -48,41 +48,45 @@ Module.register('MMM-CoinMarketCap', {
 	
 	scheduleUpdate: function() {
         var self = this;
+		Log.log(self.data.name + ': Automatic udate scheduled to run every ' + self.config.updateInterval + 'minutes.');
         setInterval(function() { self.getAllCurrencyDetails(); }, self.config.updateInterval);
     },
 	
 	getListings: function(attemptNum) {
 		var self = this;
+		Log.log(self.data.name + ': Request sent for currency listings.  ');
 		var url = self.apiBaseURL + self.apiVersion + self.apiListingsEndpoint;
 		self.sendSocketNotification('GET_LISTINGS', { url: url, attemptNum: attemptNum } );
 	},
 	
 	getSingleCurrencyDetails: function(id, attemptNum) {
 		var self = this;
+		Log.log(self.data.name + ': Request sent for currency details using id: ' + id + '.  ');
 		var url = self.apiBaseURL + self.apiVersion + self.apiTickerEndpoint + id + '/';
-		self.sendSocketNotification('GET_CURRENCY_DETAILS', { url: url, attemptNum: attemptNum } );
+		self.sendSocketNotification('GET_CURRENCY_DETAILS', { url: url, id: id, attemptNum: attemptNum } );
 	},
 	
 	getAllCurrencyDetails: function() {
 		var self = this;
+		Log.log(self.data.name + ': Update triggered');
 		for (var key in self.currencies) {
 			if (!self.currencies.hasOwnProperty(key)) { continue; }
-			getSingleCurrencyDetails(key, 1);
+			self.getSingleCurrencyDetails(key, 1);
 		}
 	},
 	
 	// socketNotificationReceived from node_helper
 	socketNotificationReceived: function (notification, payload) {
 		var self = this;
-		if (notification === 'LISTINGS_RECEIVED') {
+		if (notification === 'LISTINGS_RECEIVED' && !self.loaded) {
 			if (payload.isSuccessful) {
-				Log.log('MMM-CoinMarketCap: Listings retrieved successfully!');
+				Log.log(self.data.name + ': Listings retrieved successfully!');
 				self.listings = payload.data.data;
 				self.validateCurrenciesAgainstListings();
 				self.loaded = true;
 				self.updateDom(0);
 				self.getAllCurrencyDetails();
-				self.scheduleUpdate();
+				//self.scheduleUpdate();
 			} else if (payload.original.attemptNum < self.maxListingAttempts) {
 				setTimeout(function() { self.getListings(payload.original.attemptNum + 1); }, 8000);
 			} else {
@@ -107,7 +111,7 @@ Module.register('MMM-CoinMarketCap', {
 		self.config.currencies.forEach(function(c){
 			var listing = self.selectListing(c.id, c.name);
 			if (!axis.isUndefined(listing)) {
-				self.currencies[c.id] = { id: listing.id, name: listing.name, symbol: listing.symbol, loaded: false };
+				self.currencies[c.id] = { id: listing.id, name: listing.name, symbol: listing.symbol, loaded: false, data: {} };
 			}
 		});
 	},
@@ -128,8 +132,15 @@ Module.register('MMM-CoinMarketCap', {
 	updateCurrency: function(data) {
 		var self = this;
 		self.currencies[data.id].loaded = true;
-		
-		
+		self.currencies[data.id].data = data;
+	},
+	
+	// Override the default notificationReceived function
+	notificationReceived: function(notification, payload, sender) {
+		var self = this;
+		if (sender) { // If the notification is coming from another module
+			
+		}
 	},
 	
 	getDom: function() {
