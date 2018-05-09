@@ -8,10 +8,13 @@
  */
 
 Module.register('MMM-CoinMarketCap', {
+	
 	defaults: {
-		currencies: [ { id: 1 }, { id: 1027 }, { id: 1592 } ],
+		currencies: [ { id: 1 }, { id: 1027 }, { id: 1592 } ], // The currencies to display, in the order that they will be displayed
 		updateInterval: 10, // Minutes, minimum 5
-		retryDelay: 5 // Seconds
+		retryDelay: 5, // Seconds
+		view: [ 'name', 'symbol', 'price' ], // The columns to display, in the order that they will be displayed
+		showColumnHeaders: [ 'symbol', 'price' ], // Enable / Disagle the column header text.  Set to an array to enable by name
 	},
 
 	requiresVersion: '2.1.0', // Required version of MagicMirror
@@ -42,13 +45,15 @@ Module.register('MMM-CoinMarketCap', {
 		else { self.config.retryDelay = self.defaults.retryDelay * 1000; }
 		if (axis.isNumber(self.config.updateInterval) && self.config.updateInterval >= 5) { self.config.updateInterval = self.config.updateInterval * 60* 1000; }
 		else { self.config.updateInterval = self.defaults.updateInterval * 60 * 1000; }
+		if (!axis.isArray(self.config.view)) { self.config.view = self.defaults.view; }
+		if (!axis.isBoolean(self.config.showColumnHeaders) && !axis.isArray(self.config.showColumnHeaders)) { self.config.showColumnHeaders = self.defaults.showColumnHeaders; }
 		
 		self.getListings(1);
 	},
 	
 	scheduleUpdate: function() {
         var self = this;
-		Log.log(self.data.name + ': Automatic udate scheduled to run every ' + self.config.updateInterval + 'minutes.');
+		Log.log(self.data.name + ': Update scheduled to run automatically every ' + (self.config.updateInterval / (1000 * 60)) + ' minutes.');
         setInterval(function() { self.getAllCurrencyDetails(); }, self.config.updateInterval);
     },
 	
@@ -85,8 +90,8 @@ Module.register('MMM-CoinMarketCap', {
 				self.validateCurrenciesAgainstListings();
 				self.loaded = true;
 				self.updateDom(0);
+				self.scheduleUpdate();
 				self.getAllCurrencyDetails();
-				//self.scheduleUpdate();
 			} else if (payload.original.attemptNum < self.maxListingAttempts) {
 				setTimeout(function() { self.getListings(payload.original.attemptNum + 1); }, 8000);
 			} else {
@@ -147,6 +152,7 @@ Module.register('MMM-CoinMarketCap', {
 		
 		// Initialize some variables
 		var self = this;
+		var i;
 		var wrapper = document.createElement("div");
 		wrapper.classList.add("small");
 		
@@ -161,32 +167,61 @@ Module.register('MMM-CoinMarketCap', {
 			return wrapper;
 		}
 		
-		// Create and configure DOM elements
-		var listContainer = document.createElement("ul");
-		listContainer.classList.add("fa-ul");
+		var table = document.createElement("table");
 		
+		if (self.config.showColumnHeaders === true ||
+			(axis.isArray(self.config.showColumnHeaders) && self.config.showColumnHeaders.length > 0)
+		) {
+			var headerRow = document.createElement("tr");
+			
+			for (i = 0; i < self.config.view.length; i++) {
+				var headerCell = document.createElement("th");
+				headerCell.innerHTML += self.getViewColName(self.config.view[i]);
+				headerRow.appendChild(headerCell);
+			}
+			
+			table.appendChild(headerRow);
+		}
 		
 		for (var key in self.currencies) {
 			if (!self.currencies.hasOwnProperty(key)) { continue; }
-			var c = self.currencies[key];
-			if (!c.loaded) { continue; }
-			var newListItem = document.createElement("li");
-			newListItem.innerHTML += JSON.stringify(c);
-			//newListItem.innerHTML += c.name + ' (' + c.id + '): ' + c.symbol;
-			listContainer.appendChild(newListItem);
+			var row = document.createElement("tr");
+			for (i = 0; i < self.config.view.length; i++) {
+				var cell = document.createElement("td");
+				cell.innerHTML += self.getViewColContent(self.config.view[i], key);
+				row.appendChild(cell);
+			}
+			table.appendChild(row);
 		}
 		
-		/*
-		self.config.currencies.forEach(function(c) {
-			var newListItem = document.createElement("li");
-			newListItem.innerHTML += c.name + ' (' + c.id + '): ' + c.symbol;
-			listContainer.appendChild(newListItem);
-		});*/
-		
-		wrapper.appendChild(listContainer);
+		wrapper.appendChild(table);
 		
 		return wrapper;
 		
+	},
+	
+	getViewColName: function(colID) {
+		self = this;
+		var output = '';
+		switch (colID) {
+			case 'name': output = 'Currency'; break;
+			case 'symbol': output = 'Symbol'; break;
+			case 'price': output = 'Price'; break;
+		}
+		if (self.config.showColumnHeaders === true ||
+			(axis.isArray(self.config.showColumnHeaders) && self.config.showColumnHeaders.includes(colID))
+		) { return output; }
+		else { return ''; }
+	},
+	
+	getViewColContent: function(colID, currencyID) {
+		self = this;
+		switch (colID) {
+			case 'name': return self.currencies[currencyID].name;
+			case 'symbol': return self.currencies[currencyID].symbol;
+			case 'price': return self.currencies[currencyID].data.quotes.USD.price;
+		}
+		return '&nbsp;';
 	},
 
 	getScripts: function() {
