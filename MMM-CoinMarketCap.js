@@ -14,7 +14,7 @@ Module.register('MMM-CoinMarketCap', {
 		//currencies: [ { id: 1 }, { id: 1027 }, { id: 1592 } ], // The currencies to display, in the order that they will be displayed
 		currencies: [ 1, { name: 'taas' }, { id: 1592 }, { name: 'eth' }, 'ethereum', 'btc', 5000, { name: 'ethnotereum' }, { id: 5000 }, { id: 'therf' }, { name: 56666 }, [1] ],
 		updateInterval: 10, // Minutes, minimum 5
-		retryDelay: 5, // Seconds
+		retryDelay: 5, // Seconds, minimum 0
 		view: [ 'symbol', 'name', 'price' ], // The columns to display, in the order that they will be displayed
 		showColumnHeaders: [ 'symbol', 'price' ], // Enable / Disagle the column header text.  Set to an array to enable by name
 	},
@@ -33,6 +33,7 @@ Module.register('MMM-CoinMarketCap', {
 		self.apiTickerEndpoint = 'ticker/';
 		self.maxTickerAttempts = 2; // How many times to try updating a currency before giving up
 		self.allColumnTypes = [ 'name', 'symbol', 'price' ];
+		self.tableHeader = null;
 		
 		// Process and validate configuration options
 		if (!axis.isArray(self.config.currencies)) { self.config.currencies = self.defaults.currencies; }
@@ -206,19 +207,8 @@ Module.register('MMM-CoinMarketCap', {
 		
 		var table = document.createElement("table");
 		
-		if (self.config.showColumnHeaders === true ||
-			(axis.isArray(self.config.showColumnHeaders) && self.config.showColumnHeaders.length > 0)
-		) {
-			var headerRow = document.createElement("tr");
-			
-			for (i = 0; i < self.config.view.length; i++) {
-				var headerCell = document.createElement("th");
-				headerCell.innerHTML += self.getViewColName(self.config.view[i]);
-				headerRow.appendChild(headerCell);
-			}
-			
-			table.appendChild(headerRow);
-		}
+		if (self.tableHeader === null) { self.tableHeader = self.getTableHeader(); }
+		if (self.tableHeader !== null) { table.appendChild(self.tableHeader); }
 		
 		for (k = 0; k < self.config.currencies.length; k++) {
 			c = self.config.currencies[k];
@@ -237,6 +227,22 @@ Module.register('MMM-CoinMarketCap', {
 		
 		return wrapper;
 		
+	},
+	
+	getTableHeader: function() {
+		var self = this;
+		var output = null, i;
+		if (self.config.showColumnHeaders === true ||
+			(axis.isArray(self.config.showColumnHeaders) && self.config.showColumnHeaders.length > 0)
+		) {
+			output = document.createElement("tr");
+			for (i = 0; i < self.config.view.length; i++) {
+				var cell = document.createElement("th");
+				cell.innerHTML += self.getViewColName(self.config.view[i]);
+				output.appendChild(cell);
+			}
+		}
+		return output;
 	},
 	
 	getViewColName: function(colID) {
