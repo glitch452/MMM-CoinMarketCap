@@ -6,8 +6,9 @@
  * MIT Licensed.
  */
  
+var NodeHelper = require('node_helper');
 var request = require('request');
-var NodeHelper = require("node_helper");
+var fs = require('fs');
 
 module.exports = NodeHelper.create({
 	
@@ -15,7 +16,33 @@ module.exports = NodeHelper.create({
 		console.log('MMM-CoinMarketCap module loaded!');
 	},
 	
-	getAndReturnJSON: function(notification, payload) {
+	socketNotificationReceived: function(notification, payload) {
+		var self = this;
+		if (notification === 'GET_LISTINGS') {
+			self.sendSocketNotification(payload.notification, { isSuccessful: true, original: payload, response: null, data: self.listing });
+			//self.getAndReturnJSON(payload);
+		} else if (notification === "GET_CURRENCY_DETAILS") {
+			self.getAndReturnJSON(payload);
+		} else if (notification === 'DOWNLOAD_FILE') {
+			self.downloadFile(payload);
+		}
+	},
+	
+	getAndReturnJSON: function(payload) {
+		var self = this;
+		request({ url: payload.url, method: 'GET' }, function (error, response, body) {
+			var result;
+			if (!error && response.statusCode === 200) {
+				fs.writeFile(payload.saveToFileName, body, encoding: 'binary');
+				result = { isSuccessful: true, original: payload, response: response };
+			} else {
+				result = { isSuccessful: false, original: payload, response: response };
+			}
+			self.sendSocketNotification(payload.notification, result);
+		});
+	},
+	
+	downloadFile: function(payload) {
 		var self = this;
 		request({ url: payload.url, method: 'GET' }, function (error, response, body) {
 			var result;
@@ -24,18 +51,8 @@ module.exports = NodeHelper.create({
 			} else {
 				result = { isSuccessful: false, original: payload, response: response, data: error };
 			}
-			self.sendSocketNotification(notification, result);
+			self.sendSocketNotification(payload.notification, result);
 		});
-	},
-	
-	socketNotificationReceived: function(notification, payload) {
-		var self = this;
-		if (notification === "GET_LISTINGS") {
-			self.sendSocketNotification("LISTINGS_RECEIVED", { isSuccessful: true, original: payload, response: null, data: self.listing });
-			//self.getAndReturnJSON("LISTINGS_RECEIVED", payload);
-		} else if (notification === "GET_CURRENCY_DETAILS") {
-			self.getAndReturnJSON("CURRENCY_DETAILS_RECEIVED", payload);
-		}
 	},
 	
 	listing : {

@@ -8,6 +8,9 @@
  * 
  */
  
+ .MMM-CoinMarketCap table td, .MMM-CoinMarketCap table th {
+	padding-right: 8px; 
+ }
  
 .MMM-CoinMarketCap .image-bw {
 	filter: invert(100%) grayscale(100%);
@@ -15,18 +18,27 @@
 
 
 .MMM-CoinMarketCap .logo-container img {
-	height: 50px;
-	width: 50px;
+	
 }
 
 .MMM-CoinMarketCap .logo-container img.logo-small {
-	height: 25px;
-	width: 25px;
+	height: 16px;
+	width: 16px;
+}
+
+.MMM-CoinMarketCap .logo-container img.logo-medium {
+	height: 32px;
+	width: 32px;
 }
 
 .MMM-CoinMarketCap .logo-container img.logo-large {
-	height: 75px;
-	width: 75px;
+	height: 64px;
+	width: 64px;
+}
+
+.MMM-CoinMarketCap .logo-container img.logo-x-large {
+	height: 128px;
+	width: 128px;
 }
 
 .MMM-CoinMarketCap .graph-container img {

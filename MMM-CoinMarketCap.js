@@ -24,17 +24,22 @@ Module.register('MMM-CoinMarketCap', {
 		retryDelay: 5, // Seconds, minimum 0
 		view: [ 'logo', 'symbol', 'name', 'price' ], // The columns to display, in the order that they will be displayed
 		showColumnHeaders: [ 'symbol', 'price', 'logo' ], // Enable / Disagle the column header text.  Set to an array to enable by name
-		logoSize: 'medium', // small, medium, large
+		columnHeaderText: { name: 'Currency', symbol: 'Currency', price: 'Price', logo: 'Logo' },
+		logoSize: 'medium', // small, medium, large, 'x-large'
 		logoColored: false, // if true, use the original logo, if false, use filter to make a black and white version
+		
 	},
 
 	requiresVersion: '2.1.0', // Required version of MagicMirror
 
 	start: function() {
 		var self = this;
+		var i, c;
 		self.loaded = false;
 		self.listings = null;
 		self.currencyData = {};
+		self.logosBaseURL = 'https://s2.coinmarketcap.com/static/img/coins/';
+		self.logosURLTemplate = self.logosBaseURL + '{size}x{size}/{id}.png';
 		self.apiBaseURL = 'https://api.coinmarketcap.com/';
 		self.apiVersion = 'v2/';
 		self.apiListingsEndpoint = 'listings/';
@@ -44,7 +49,8 @@ Module.register('MMM-CoinMarketCap', {
 		self.allColumnTypes = [ 'name', 'symbol', 'price', 'logo' ];
 		self.tableHeader = null;
 		self.logoFolder = '/' + self.data.name + '/logos/';
-		self.validLogoSizes = [ 'small', 'medium', 'large' ];
+		self.validLogoSizes = [ 'small', 'medium', 'large', 'x-large' ];
+		self.logoSizeToPX = { 'small': 16, 'medium': 32, 'large': 64, 'x-large': 128 };
 		
 		// Process and validate configuration options
 		if (!axis.isArray(self.config.currencies)) { self.config.currencies = self.defaults.currencies; }
@@ -54,6 +60,13 @@ Module.register('MMM-CoinMarketCap', {
 				(axis.isObject(val) && ( (axis.isNumber(val.id) && val.id > 0) || (axis.isString(val.name) && val.name.length > 0) )) );
 			});
 		}
+		if (!axis.isObject(self.config.columnHeaderText)) { self.config.columnHeaderText = {}; }
+		for (var key in self.config.columnHeaderText) {
+			if (self.config.columnHeaderText.hasOwnProperty(key) && axis.isString(self.config.columnHeaderText[key])) {
+				self.defaults.columnHeaderText[key] = self.config.columnHeaderText[key];
+			}
+		}
+		self.config.columnHeaderText = self.defaults.columnHeaderText;
 		if (axis.isNumber(self.config.retryDelay) && self.config.retryDelay >= 0) { self.config.retryDelay = self.config.retryDelay * 1000; }
 		else { self.config.retryDelay = self.defaults.retryDelay * 1000; }
 		if (axis.isNumber(self.config.updateInterval) && self.config.updateInterval >= 5) { self.config.updateInterval = self.config.updateInterval * 60* 1000; }
@@ -69,8 +82,19 @@ Module.register('MMM-CoinMarketCap', {
 		if (!self.validLogoSizes.includes(self.config.logoSize)) { self.config.logoSize = self.defaults.logoSize; }
 		if (!axis.isBoolean(self.config.logoColored)) { self.config.logoColored = self.defaults.logoColored; }
 		
-		
-		
+		// Configure all the currencies as objects with the requested settings
+		for (i = 0; i < self.config.currencies.length; i++) {
+			c = self.config.currencies[i];
+			// Ensure that the currency is an object
+			if (axis.isNumber(c)) {
+				c = self.config.currencies[i] = { id: c };
+			} else if (axis.isString(c)) {
+				c = self.config.currencies[i] = { name: c };
+			}
+			if (!self.validLogoSizes.includes(c.logoSize)) { c.logoSize = self.config.logoSize; }
+			if (!axis.isBoolean(c.logoColored)) { c.logoColored = self.config.logoColored; }
+			
+		}
 		
 		
 		self.getListings(1);
@@ -86,14 +110,14 @@ Module.register('MMM-CoinMarketCap', {
 		var self = this;
 		Log.log(self.data.name + ': Request sent for currency listings.  ');
 		var url = self.apiBaseURL + self.apiVersion + self.apiListingsEndpoint;
-		self.sendSocketNotification('GET_LISTINGS', { url: url, attemptNum: attemptNum } );
+		self.sendSocketNotification('GET_LISTINGS', { url: url, attemptNum: attemptNum, notification: 'LISTINGS_RECEIVED' } );
 	},
 	
 	getSingleCurrencyDetails: function(id, attemptNum) {
 		var self = this;
 		Log.log(self.data.name + ': Request sent to update ' + self.currencyData[id].name + ' using ID: ' + id + '.  ');
 		var url = self.apiBaseURL + self.apiVersion + self.apiTickerEndpoint + id + '/';
-		self.sendSocketNotification('GET_CURRENCY_DETAILS', { url: url, id: id, attemptNum: attemptNum } );
+		self.sendSocketNotification('GET_CURRENCY_DETAILS', { url: url, id: id, attemptNum: attemptNum, notification: 'CURRENCY_DETAILS_RECEIVED' } );
 	},
 	
 	getAllCurrencyDetails: function() {
@@ -112,8 +136,7 @@ Module.register('MMM-CoinMarketCap', {
 			if (payload.isSuccessful && payload.data.metadata.error === null) {
 				Log.log(self.data.name + ': Listings retrieved successfully after ' + payload.original.attemptNum + ' attempt(s).');
 				self.listings = payload.data.data;
-				self.validateCurrenciesAgainstListings();
-				self.setCurrencyConfigurations();
+				self.filterCurrenciesAndSetupDataSet();
 				self.loaded = true;
 				self.updateDom(0);
 				self.scheduleUpdate();
@@ -142,37 +165,22 @@ Module.register('MMM-CoinMarketCap', {
 		}
 	},
 	
-	validateCurrenciesAgainstListings: function() {
+	filterCurrenciesAndSetupDataSet: function() {
 		var self = this;
 		var i, c, listing;
 		var temp = [];
 		for (i = 0; i < self.config.currencies.length; i++) {
 			c = self.config.currencies[i];
-			if (axis.isNumber(c)) {
-				listing = self.selectListing(c, null);
-				if (axis.isUndefined(listing)) {
-					Log.log(self.data.name + ': Unable to find currency with id: "' + c + '".');
-				} else {
-					temp.push( { id: listing.id } );
-					self.currencyData[listing.id] = { name: listing.name, data: null, loaded: false };
-				}
-			} else if (axis.isString(c)) {
-				listing = self.selectListing(null, c);
-				if (axis.isUndefined(listing)) {
-					Log.log(self.data.name + ': Unable to find currency with name: "' + c + '".');
-				} else {
-					temp.push( { id: listing.id } );
-					self.currencyData[listing.id] = { name: listing.name, data: null, loaded: false };
-				}
-			} else if (axis.isObject(c)) {
-				listing = self.selectListing(c.id, c.name);
-				if (axis.isUndefined(listing)) {
-					Log.log(self.data.name + ': Unable to find currency with id: "' + c.id + '" and name: "' + c.name + '".');
-				} else {
-					c.id = listing.id;
-					temp.push(c);
-					self.currencyData[listing.id] = { name: listing.name, data: null, loaded: false };
-				}
+			listing = self.selectListing(c.id, c.name);
+			if (axis.isUndefined(listing)) {
+				Log.log(self.data.name + ': Unable to find currency with id: "' + c.id + '" or name: "' + c.name + '".');
+			} else {
+				c.id = listing.id;
+				c.name = listing.name;
+				c.symbol = listing.symbol;
+				c.website_slug = listing.website_slug;
+				temp.push(c);
+				self.currencyData[listing.id] = { name: listing.name, data: null, loaded: false };
 			}
 		}
 		self.config.currencies = temp;
@@ -204,19 +212,6 @@ Module.register('MMM-CoinMarketCap', {
 		if (sender) { // If the notification is coming from another module
 			
 		}
-	},
-	
-	setCurrencyConfigurations: function() {
-		var self = this;
-		var i, c;
-		for (i = 0; i < self.config.currencies.length; i++) {
-			c = self.config.currencies[i];
-			if (!self.validLogoSizes.includes(c.logoSize)) { c.logoSize = self.config.logoSize; }
-			if (!axis.isBoolean(c.logoColored)) { c.logoColored = self.config.logoColored; }
-			
-			
-		}
-		
 	},
 	
 	getDom: function() {
@@ -266,32 +261,19 @@ Module.register('MMM-CoinMarketCap', {
 	getTableHeader: function() {
 		var self = this;
 		var output = null, i;
-		if (self.config.showColumnHeaders === true ||
-			(axis.isArray(self.config.showColumnHeaders) && self.config.showColumnHeaders.length > 0)
-		) {
+		if (self.config.showColumnHeaders === true || (axis.isArray(self.config.showColumnHeaders) && self.config.showColumnHeaders.length > 0) ) {
 			output = document.createElement("tr");
 			for (i = 0; i < self.config.view.length; i++) {
 				var cell = document.createElement("th");
-				cell.innerHTML += self.getViewColName(self.config.view[i]);
+				if (self.config.showColumnHeaders === true || (axis.isArray(self.config.showColumnHeaders) && self.config.showColumnHeaders.includes(self.config.view[i])) ) {
+					cell.innerHTML = self.config.columnHeaderText[self.config.view[i]];
+				} else {
+					cell.innerHTML = ' ';
+				}
 				output.appendChild(cell);
 			}
 		}
 		return output;
-	},
-	
-	getViewColName: function(colID) {
-		var self = this;
-		var output = '';
-		switch (colID) {
-			case 'name': output = 'Currency'; break;
-			case 'symbol': output = 'Symbol'; break;
-			case 'price': output = 'Price'; break;
-			case 'logo': output = 'Logo'; break;
-		}
-		if (self.config.showColumnHeaders === true ||
-			(axis.isArray(self.config.showColumnHeaders) && self.config.showColumnHeaders.includes(colID))
-		) { return output; }
-		else { return ''; }
 	},
 	
 	/**
@@ -311,16 +293,26 @@ Module.register('MMM-CoinMarketCap', {
 				var logoWrapper = document.createElement("span");
 				logoWrapper.classList.add("logo-container");
 				var logoFileName = self.logoFolder + data.symbol.toLowerCase() + '.png';
+				if (!self.fileExists(logoFileName)) { logoFileName = self.getLogoURL(currency.logoSize, data.id); }
 				if (self.fileExists(logoFileName)) {
 					var logo = new Image();
 					logo.src = logoFileName;
 					logo.classList.add('logo-' + currency.logoSize);
 					if (!currency.logoColored) { logo.classList.add('image-bw'); }
 					logoWrapper.appendChild(logo);
+					//self.logosURLTemplate
 				}
 				return logoWrapper;
 		}
 		return ' ';
+	},
+	
+	getLogoURL: function(size, id) {
+		var self = this;
+		var output = self.logosURLTemplate;
+		output = self.replaceAll(output, '{size}', self.logoSizeToPX[size].toString());
+		output = self.replaceAll(output, '{id}', id.toString());
+		return output;
 	},
 	
 	fileExists: function(fileName) {
@@ -328,6 +320,18 @@ Module.register('MMM-CoinMarketCap', {
 		http.open('HEAD', fileName, false);
 		http.send();
 		return http.status != 404;
+	},
+	
+	replaceAll: function(str, find, replace) {
+		var output = '';
+		var idx = str.indexOf(find);
+		while (idx >= 0) {
+			output += str.substr(0, idx) + replace;
+			str = str.substring(idx + find.length);
+			idx = str.indexOf(find);
+		}
+		output += str;
+		return output;
 	},
 	
 	// Load Scripts
