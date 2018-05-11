@@ -20,6 +20,7 @@ Module.register('MMM-CoinMarketCap', {
 			{ name: 'eth', logoSize: 'large' },
 			'ethereum', 'ABC',
 			5000, { name: 'ethnotereum' }, { id: 5000 }, { id: 'therf' }, { name: 56666 }, [1] ],
+		//currencies: [ 1, 1027 ],
 		updateInterval: 10, // Minutes, minimum 5
 		retryDelay: 5, // Seconds, minimum 0
 		view: [ 'logo', 'symbol', 'name', 'price' ], // The columns to display, in the order that they will be displayed
@@ -27,6 +28,7 @@ Module.register('MMM-CoinMarketCap', {
 		columnHeaderText: { name: 'Currency', symbol: 'Currency', price: 'Price', logo: 'Logo' },
 		logoSize: 'medium', // small, medium, large, 'x-large'
 		logoColored: false, // if true, use the original logo, if false, use filter to make a black and white version
+		cacheLogos: true, // Whether to download the logos from coinmarketcap or just access them from the site directly
 		
 	},
 
@@ -35,6 +37,7 @@ Module.register('MMM-CoinMarketCap', {
 	start: function() {
 		var self = this;
 		var i, c;
+		self.sendSocketNotification('INIT', null);
 		self.loaded = false;
 		self.listings = null;
 		self.currencyData = {};
@@ -48,6 +51,7 @@ Module.register('MMM-CoinMarketCap', {
 		self.maxTickerAttempts = 2; // How many times to try updating a currency before giving up
 		self.allColumnTypes = [ 'name', 'symbol', 'price', 'logo' ];
 		self.tableHeader = null;
+		self.LocalLogoFolder = 'modules/' + self.data.name + '/public/logos/';
 		self.logoFolder = '/' + self.data.name + '/logos/';
 		self.validLogoSizes = [ 'small', 'medium', 'large', 'x-large' ];
 		self.logoSizeToPX = { 'small': 16, 'medium': 32, 'large': 64, 'x-large': 128 };
@@ -81,6 +85,7 @@ Module.register('MMM-CoinMarketCap', {
 		) { self.config.showColumnHeaders = self.defaults.showColumnHeaders; }
 		if (!self.validLogoSizes.includes(self.config.logoSize)) { self.config.logoSize = self.defaults.logoSize; }
 		if (!axis.isBoolean(self.config.logoColored)) { self.config.logoColored = self.defaults.logoColored; }
+		if (!axis.isBoolean(self.config.cacheLogos)) { self.config.cacheLogos = self.defaults.cacheLogos; }
 		
 		// Configure all the currencies as objects with the requested settings
 		for (i = 0; i < self.config.currencies.length; i++) {
@@ -92,10 +97,12 @@ Module.register('MMM-CoinMarketCap', {
 				c = self.config.currencies[i] = { name: c };
 			}
 			if (!self.validLogoSizes.includes(c.logoSize)) { c.logoSize = self.config.logoSize; }
+			c.logoSizePX = self.logoSizeToPX[c.logoSize];
 			if (!axis.isBoolean(c.logoColored)) { c.logoColored = self.config.logoColored; }
 			
+			
 		}
-		
+		//Log.log(self.data.name + ': this.file(\'test\') "' + this.file('test') + '".');
 		
 		self.getListings(1);
 	},
@@ -129,10 +136,37 @@ Module.register('MMM-CoinMarketCap', {
 		}
 	},
 	
-	// socketNotificationReceived from node_helper
-	socketNotificationReceived: function (notification, payload) {
+	cacheLogos: function() {
 		var self = this;
-		if (notification === 'LISTINGS_RECEIVED' && !self.loaded) {
+		if (!self.config.cacheLogos) { return; }
+		//Log.log(self.data.name + ': Requesting to cache logos.');
+		for (var key in self.currencyData) {
+			if (!self.currencyData.hasOwnProperty(key)) { continue; }
+			var symbol = self.currencyData[key].symbol.toLowerCase();
+			for (var sizeKey in self.logoSizeToPX) {
+				if (!self.logoSizeToPX.hasOwnProperty(sizeKey)) { continue; }
+				var sizePX = self.logoSizeToPX[sizeKey];
+				var imageURL = self.getLogoURL(sizePX, key);
+				if (!self.fileExists(self.logoFolder + symbol + '-' + sizePX + '.png')) {
+					Log.log(self.data.name + ': Requesting logo download: "' + imageURL + '".');
+					self.sendSocketNotification('DOWNLOAD_FILE', {
+						url: imageURL,
+						saveToFileName: self.LocalLogoFolder + symbol + '-' + sizePX + '.png',
+						//encoding: 'binary', //'utf8', 'ascii', 'binary', 'hex', 'base64', 'utf16le'
+						attemptNum: 1,
+						notification: 'LOGO_DOWNLOADED'
+					});
+				}
+			}
+		}
+	},
+	
+	// socketNotificationReceived from node_helper
+	socketNotificationReceived: function(notification, payload) {
+		var self = this;
+		if (notification === 'LOG') {
+			Log.log(self.data.name + ': ' + payload);
+		} else if (notification === 'LISTINGS_RECEIVED' && !self.loaded) {
 			if (payload.isSuccessful && payload.data.metadata.error === null) {
 				Log.log(self.data.name + ': Listings retrieved successfully after ' + payload.original.attemptNum + ' attempt(s).');
 				self.listings = payload.data.data;
@@ -141,6 +175,7 @@ Module.register('MMM-CoinMarketCap', {
 				self.updateDom(0);
 				self.scheduleUpdate();
 				self.getAllCurrencyDetails();
+				self.cacheLogos();
 				Log.log(self.data.name + ': self.config.currencies: ' + JSON.stringify(self.config.currencies));
 				//Log.log(self.data.name + ': self.currencyData: ' + JSON.stringify(self.currencyData));
 			} else if (payload.original.attemptNum < self.maxListingAttempts) {
@@ -162,6 +197,14 @@ Module.register('MMM-CoinMarketCap', {
 				Log.log(self.data.name + ': Currency Update FAILED for ' + self.currencyData[payload.original.id].name + ' using ID: ' + payload.original.id + '. Retrying in ' + (self.config.retryDelay/1000) + ' seconds.');
 				setTimeout(function() { self.getCurrencyDetails(payload.original.id, payload.original.attemptNum + 1); }, self.config.retryDelay);
 			}
+		} else if (notification === 'LOGO_DOWNLOADED') {
+			if (payload.isSuccessful) {
+				Log.log(self.data.name + ': Successfully download logo: "' + payload.original.saveToFileName + '".');
+				//Log.log(self.data.name + ': response: "' + JSON.stringify(payload.response) + '".');
+				//Log.log(self.data.name + ': data: "' + JSON.stringify(payload.data) + '".');
+			} else {
+				Log.log(self.data.name + ': Logo download failed for: "' + payload.original.saveToFileName + '".');
+			}
 		}
 	},
 	
@@ -180,7 +223,7 @@ Module.register('MMM-CoinMarketCap', {
 				c.symbol = listing.symbol;
 				c.website_slug = listing.website_slug;
 				temp.push(c);
-				self.currencyData[listing.id] = { name: listing.name, data: null, loaded: false };
+				self.currencyData[listing.id] = { name: listing.name, symbol: listing.symbol, data: null, loaded: false };
 			}
 		}
 		self.config.currencies = temp;
@@ -244,7 +287,6 @@ Module.register('MMM-CoinMarketCap', {
 				var row = document.createElement("tr");
 				for (i = 0; i < self.config.view.length; i++) {
 					var cell = document.createElement("td");
-					//cell.innerHTML += self.getViewColContent(self.config.view[i], c.id);
 					cell.appendChild(self.getViewColContent(self.config.view[i], c));
 					row.appendChild(cell);
 				}
@@ -292,16 +334,16 @@ Module.register('MMM-CoinMarketCap', {
 			case 'logo':
 				var logoWrapper = document.createElement("span");
 				logoWrapper.classList.add("logo-container");
-				var logoFileName = self.logoFolder + data.symbol.toLowerCase() + '.png';
-				if (!self.fileExists(logoFileName)) { logoFileName = self.getLogoURL(currency.logoSize, data.id); }
-				if (self.fileExists(logoFileName)) {
+				
+				var logoFileName = self.logoFolder + data.symbol.toLowerCase() + '-' + currency.logoSizePX + '.png';
+				if (!self.fileExists(logoFileName)) { logoFileName = self.getLogoURL(currency.logoSizePX, data.id); }
+				//if (self.fileExists(logoFileName)) {
 					var logo = new Image();
 					logo.src = logoFileName;
 					logo.classList.add('logo-' + currency.logoSize);
 					if (!currency.logoColored) { logo.classList.add('image-bw'); }
 					logoWrapper.appendChild(logo);
-					//self.logosURLTemplate
-				}
+				//}
 				return logoWrapper;
 		}
 		return ' ';
@@ -309,17 +351,19 @@ Module.register('MMM-CoinMarketCap', {
 	
 	getLogoURL: function(size, id) {
 		var self = this;
+		//Log.log(self.data.name + ': getLogoURL(): size = "' + size + '", id: "' + id + '".');
+		if (axis.isString(size)) { size = self.logoSizeToPX[size]; }
 		var output = self.logosURLTemplate;
-		output = self.replaceAll(output, '{size}', self.logoSizeToPX[size].toString());
+		output = self.replaceAll(output, '{size}', size.toString());
 		output = self.replaceAll(output, '{id}', id.toString());
 		return output;
 	},
 	
 	fileExists: function(fileName) {
-		var http = new XMLHttpRequest();
-		http.open('HEAD', fileName, false);
-		http.send();
-		return http.status != 404;
+		var request = new XMLHttpRequest();
+		request.open('HEAD', fileName, false);
+		request.send();
+		return request.status != 404;
 	},
 	
 	replaceAll: function(str, find, replace) {

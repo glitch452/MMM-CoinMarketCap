@@ -13,11 +13,14 @@ var fs = require('fs');
 module.exports = NodeHelper.create({
 	
 	start: function () {
-		console.log('MMM-CoinMarketCap module loaded!');
+		var self = this;
+		self.name = 'MMM-CoinMarketCap';
+		console.log(self.name + ': module loaded!');
 	},
 	
 	socketNotificationReceived: function(notification, payload) {
 		var self = this;
+		console.log(self.name + ': Socket Notification Received: "' + notification + '".');
 		if (notification === 'GET_LISTINGS') {
 			self.sendSocketNotification(payload.notification, { isSuccessful: true, original: payload, response: null, data: self.listing });
 			//self.getAndReturnJSON(payload);
@@ -25,6 +28,10 @@ module.exports = NodeHelper.create({
 			self.getAndReturnJSON(payload);
 		} else if (notification === 'DOWNLOAD_FILE') {
 			self.downloadFile(payload);
+		} else if (notification === 'INIT') {
+			//self.sendSocketNotification('LOG', '__dirname: ' + __dirname); // /home/pi/MagicMirror/modules/MMM-CoinMarketCap			
+			//self.sendSocketNotification('LOG', 'process.cwd(): ' + process.cwd()); // home/pi/MagicMirror
+			self.sendSocketNotification('LOG', 'node_helper.js loaded successfully.'); 
 		}
 	},
 	
@@ -33,27 +40,43 @@ module.exports = NodeHelper.create({
 		request({ url: payload.url, method: 'GET' }, function (error, response, body) {
 			var result;
 			if (!error && response.statusCode === 200) {
-				fs.writeFile(payload.saveToFileName, body, encoding: 'binary');
-				result = { isSuccessful: true, original: payload, response: response };
+				result = { isSuccessful: true, original: payload, response: response, data: JSON.parse(body) };
 			} else {
-				result = { isSuccessful: false, original: payload, response: response };
+				result = { isSuccessful: false, original: payload, response: response, data: error };
 			}
-			self.sendSocketNotification(payload.notification, result);
+			if (typeof payload.notification === 'string') { self.sendSocketNotification(payload.notification, result); }
 		});
 	},
 	
 	downloadFile: function(payload) {
 		var self = this;
-		request({ url: payload.url, method: 'GET' }, function (error, response, body) {
+		request({ url: payload.url, encoding: 'binary', method: 'GET' }, function (error, response, body) {
 			var result;
 			if (!error && response.statusCode === 200) {
-				result = { isSuccessful: true, original: payload, response: response, data: JSON.parse(body) };
+				result = { isSuccessful: true, original: payload, response: response, data: body };
 			} else {
 				result = { isSuccessful: false, original: payload, response: response, data: error };
 			}
-			self.sendSocketNotification(payload.notification, result);
+			if (typeof payload.notification === 'string') { self.sendSocketNotification(payload.notification, result); }
+			// If the download was successful, try to save the file
+			if (result.isSuccessful) {
+				fs.writeFile(payload.saveToFileName, response.body, { encoding: 'binary' }, function(err){
+					if (!err) { self.sendSocketNotification('LOG', 'Successfully saved "' + payload.url + '" as: "' + payload.saveToFileName + '".'); }
+					else { self.sendSocketNotification('LOG', 'Failed to save "' + payload.url + '" as: "' + payload.saveToFileName + '".'); }
+				});
+			}
 		});
 	},
+	
+	/* Alternative approach to file downloading
+	downloadFile: function(payload) {
+		// request(uri).pipe(fs.createWriteStream(filename)).on('close', callback); <-- Example
+		var self = this;
+		request({ url: payload.url, method: 'GET' }).pipe(fs.createWriteStream(payload.saveToFileName)).on('close', function(err){
+			if (!err) { self.sendSocketNotification('LOG', 'Successfully saved "' + payload.url + '" as: "' + payload.saveToFileName + '".'); }
+			else { self.sendSocketNotification('LOG', 'Failed to save "' + payload.url + '" as: "' + payload.saveToFileName + '".'); }
+		});
+	},*/
 	
 	listing : {
 		"data": [
