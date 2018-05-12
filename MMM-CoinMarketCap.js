@@ -34,7 +34,7 @@ Module.register('MMM-CoinMarketCap', {
 		cacheLogos: false, // Whether to download the logos from coinmarketcap or just access them from the site directly
 		conversion: 'USD',
 		significantDigits: 2,
-		decimalPlaces: 0,
+		decimalPlaces: 2,
 		
 	},
 
@@ -407,36 +407,48 @@ Module.register('MMM-CoinMarketCap', {
 		return cell;
 	},
 	
+	//price.toLocaleString(config.language, { style: 'currency', currency: this.config.conversion, maximumSignificantDigits: significantDigits })
+	
+	/**
+	 * Format a number to have a specified amount of significant digits and/or a fixes amount of decimal places
+	 * @param number the number to format
+	 * @param significantDigits the number of digits to consider before rounding the number
+	 * @param decimalPlaces the number of decimal places the formatted number should display (includes 0's)
+	 * @return (string) the formatted number
+	 */
 	conformNumber: function(number, significantDigits, decimalPlaces) {
 		var self = this;
 		//Log.log(self.data.name + ': conformNumber(' + number + ', ' + significantDigits + ', ' + decimalPlaces + ')');
+		if (!axis.isNumber(significantDigits) || significantDigits < 0) { significantDigits = 0; }
+		if (!axis.isNumber(decimalPlaces) || decimalPlaces < 0) { decimalPlaces = 0; }
+		significantDigits = Math.round(significantDigits);
+		decimalPlaces = Math.round(decimalPlaces);
+		var result;
+		var isNegative = number < 0;
+		number = Math.abs(number);
+		
 		if (significantDigits === 0) {
-			if (decimalPlaces === 0) { return number; }
-			return self.roundNumber(number, decimalPlaces).toFixed(decimalPlaces);
+			if (decimalPlaces === 0) { result = number; }
+			else { result = self.roundNumber(number, decimalPlaces).toFixed(decimalPlaces); }
 		} else {
-			var integerPart = Math.floor(number).toString();
-			if (integerPart === '0') { integerPart = ''; }
-			
+			var integerPartSize = Math.floor(number) === 0 ? 0 : Math.floor(number).toString().length;
 			if (decimalPlaces === 0) {
-				if (significantDigits <= integerPart.length) { return Number( Number(number).toPrecision(significantDigits) ); }
-				/*else if (number < 1 && number > 0) {
-					var decimapPos = number.toString().indexOf('.');
-					var decimalPart = decimapPos >= 0 ? number.toString().substring(decimapPos + 1) : '';
-					number = self.roundNumber(Number(decimalPart), significantDigits);
-					Number(decimalPart).toString().length()
-				}*/
-				else { return self.roundNumber(number, significantDigits - integerPart.length); }
+				if (integerPartSize === 0) { // Handle the special case: 0 < number < 1
+					var parts = number.toExponential(significantDigits).split('e');
+        			result = Number(self.roundNumber(parts[0], significantDigits - 1) + 'e' + parts[1]);
+				} else {
+					result = self.roundNumber(number, significantDigits - integerPartSize);
+				}
 			} else {
-				if (significantDigits <= integerPart.length) { return Number( Number(number).toPrecision(significantDigits) ).toFixed(decimalPlaces); }
-				else { return (self.roundNumber(number, significantDigits - integerPart.length)).toFixed(decimalPlaces); }
+				result = self.conformNumber( self.conformNumber(number, significantDigits, 0), 0, decimalPlaces );
 			}
 		}
-		//Number(Math.round(value+'e'+decimals)+'e-'+decimals)
-		//price.toLocaleString(config.language, { style: 'currency', currency: this.config.conversion, maximumSignificantDigits: significantDigits })
+		return isNegative ? '-' + result : result.toString();
     },
 	
 	roundNumber: function(number, precision) {
-        return Number(Math.round(number + 'e' + precision) + 'e-' + precision);
+        if (precision >= 0) { return Number(Math.round(number + 'e' + precision) + 'e-' + precision); }
+    	else { return Number(Math.round(number + 'e-' + Math.abs(precision)) + 'e' + Math.abs(precision)); }
     },
 	
 	getLogoURL: function(size, id) {
