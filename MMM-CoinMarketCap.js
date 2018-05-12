@@ -13,22 +13,28 @@ Module.register('MMM-CoinMarketCap', {
 	
 	defaults: {
 		//currencies: [ { id: 1 }, { id: 1027 }, { id: 1592 } ], // The currencies to display, in the order that they will be displayed
-		currencies: [ 1,
-			{ id: 1, logoColored: true, logoSize: 'small' },
-			{ name: 'taas', logoSize: 'small', logoColored: false },
-			{ id: 1592, logoColored: true },
+		/*currencies: [ 1,
+			{ id: 1, logoColored: true, logoSize: 'small', significantDigits: 3 },
+			{ name: 'taas', logoSize: 'small', logoColored: false, decimalPlaces: 4, percentChangeColored: false },
+			{ id: 1592, logoColored: true, significantDigits: 2, decimalPlaces: 2, },
 			{ name: 'eth', logoSize: 'large' },
 			'ethereum', 'ABC',
-			5000, { name: 'ethnotereum' }, { id: 5000 }, { id: 'therf' }, { name: 56666 }, [1] ],
+			5000, { name: 'ethnotereum' }, { id: 5000 }, { id: 'therf' }, { name: 56666 }, [1] ],*/
 		//currencies: [ 1, 1027 ],
+		currencies: [ 1, 'ethereum', 'ripple', 'tron', 'taas', 'eos', 'litecoin', 'iota', 'dash', 'monero', 'Bytecoin', 'icon', ],
 		updateInterval: 10, // Minutes, minimum 5
 		retryDelay: 5, // Seconds, minimum 0
-		view: [ 'logo', 'symbol', 'name', 'price' ], // The columns to display, in the order that they will be displayed
-		showColumnHeaders: [ 'symbol', 'price', 'logo' ], // Enable / Disagle the column header text.  Set to an array to enable by name
-		columnHeaderText: { name: 'Currency', symbol: 'Currency', price: 'Price', logo: 'Logo' },
+		//view: [ 'logo', 'price' ],
+		view: [ 'logo', 'symbol', 'name', 'price', 'priceUSD', 'change1h', 'change24h', 'change7d' ], // The columns to display, in the order that they will be displayed
+		showColumnHeaders: [ 'symbol', 'price', 'priceUSD', 'logo', 'change1h', 'change24h', 'change7d' ], // Enable / Disagle the column header text.  Set to an array to enable by name
+		columnHeaderText: { name: 'Currency', symbol: 'Currency', price: 'Price ({conversion})', priceUSD: 'Price (USD)', logo: '', change1h: 'Hour', change24h: 'Day', change7d: 'Week' },
 		logoSize: 'medium', // small, medium, large, 'x-large'
 		logoColored: false, // if true, use the original logo, if false, use filter to make a black and white version
-		cacheLogos: true, // Whether to download the logos from coinmarketcap or just access them from the site directly
+		percentChangeColored: true,
+		cacheLogos: false, // Whether to download the logos from coinmarketcap or just access them from the site directly
+		conversion: 'USD',
+		significantDigits: 2,
+		decimalPlaces: 0,
 		
 	},
 
@@ -49,12 +55,17 @@ Module.register('MMM-CoinMarketCap', {
 		self.maxListingAttempts = 4; // How many times to try downloading the listing before giving up and displaying an error
 		self.apiTickerEndpoint = 'ticker/';
 		self.maxTickerAttempts = 2; // How many times to try updating a currency before giving up
-		self.allColumnTypes = [ 'name', 'symbol', 'price', 'logo' ];
+		self.allColumnTypes = [ 'name', 'symbol', 'price', 'priceUSD', 'logo', 'change1h', 'change24h', 'change7d' ];
 		self.tableHeader = null;
 		self.LocalLogoFolder = 'modules/' + self.data.name + '/public/logos/';
-		self.logoFolder = '/' + self.data.name + '/logos/';
+		self.LocalLogoFolderBW = 'modules/' + self.data.name + '/public/logos_bw/';
+		self.httpLogoFolder = '/' + self.data.name + '/logos/';
+		self.httpLogoFolderBW = '/' + self.data.name + '/logos_bw/';
 		self.validLogoSizes = [ 'small', 'medium', 'large', 'x-large' ];
 		self.logoSizeToPX = { 'small': 16, 'medium': 32, 'large': 64, 'x-large': 128 };
+		self.validConversions = [ "AUD", "BRL", "CAD", "CHF", "CLP", "CNY", "CZK", "DKK", "EUR", "GBP", "HKD", "HUF", "IDR", "ILS", "INR", 
+								"JPY", "KRW", "MXN", "MYR", "NOK", "NZD", "PHP", "PKR", "PLN", "RUB", "SEK", "SGD", "THB", "TRY", "TWD", 
+								"ZAR", "BTC", "ETH", "XRP", "LTC", "BCH" ];
 		
 		// Process and validate configuration options
 		if (!axis.isArray(self.config.currencies)) { self.config.currencies = self.defaults.currencies; }
@@ -86,6 +97,12 @@ Module.register('MMM-CoinMarketCap', {
 		if (!self.validLogoSizes.includes(self.config.logoSize)) { self.config.logoSize = self.defaults.logoSize; }
 		if (!axis.isBoolean(self.config.logoColored)) { self.config.logoColored = self.defaults.logoColored; }
 		if (!axis.isBoolean(self.config.cacheLogos)) { self.config.cacheLogos = self.defaults.cacheLogos; }
+		if (!axis.isBoolean(self.config.percentChangeColored)) { self.config.percentChangeColored = self.defaults.percentChangeColored; }
+		if (!self.validConversions.includes(self.config.conversion)) { self.config.conversion = self.defaults.conversion; }
+		if (!axis.isNumber(self.config.significantDigits) || self.config.significantDigits < 0) { self.config.significantDigits = self.defaults.significantDigits; }
+		else { self.config.significantDigits = Math.round(self.config.significantDigits); }
+		if (!axis.isNumber(self.config.decimalPlaces) || self.config.decimalPlaces < 0) { self.config.decimalPlaces = self.defaults.decimalPlaces; }
+		else { self.config.decimalPlaces = Math.round(self.config.decimalPlaces); }
 		
 		// Configure all the currencies as objects with the requested settings
 		for (i = 0; i < self.config.currencies.length; i++) {
@@ -99,10 +116,16 @@ Module.register('MMM-CoinMarketCap', {
 			if (!self.validLogoSizes.includes(c.logoSize)) { c.logoSize = self.config.logoSize; }
 			c.logoSizePX = self.logoSizeToPX[c.logoSize];
 			if (!axis.isBoolean(c.logoColored)) { c.logoColored = self.config.logoColored; }
-			
+			if (!axis.isBoolean(c.percentChangeColored)) { c.percentChangeColored = self.config.percentChangeColored; }
+			if (!axis.isNumber(c.significantDigits) || c.significantDigits < 0) { c.significantDigits = self.defaults.significantDigits; }
+			else { c.significantDigits = Math.round(c.significantDigits); }
+			if (!axis.isNumber(c.decimalPlaces) || c.decimalPlaces < 0) { c.decimalPlaces = self.defaults.decimalPlaces; }
+			else { c.decimalPlaces = Math.round(c.decimalPlaces); }
 			
 		}
 		//Log.log(self.data.name + ': this.file(\'test\') "' + this.file('test') + '".');
+		
+		self.config.columnHeaderText.price = self.replaceAll(self.config.columnHeaderText.price, '{conversion}', self.config.conversion);
 		
 		self.getListings(1);
 	},
@@ -147,7 +170,7 @@ Module.register('MMM-CoinMarketCap', {
 				if (!self.logoSizeToPX.hasOwnProperty(sizeKey)) { continue; }
 				var sizePX = self.logoSizeToPX[sizeKey];
 				var imageURL = self.getLogoURL(sizePX, key);
-				if (!self.fileExists(self.logoFolder + symbol + '-' + sizePX + '.png')) {
+				if (!self.fileExists(self.httpLogoFolder + symbol + '-' + sizePX + '.png')) {
 					Log.log(self.data.name + ': Requesting logo download: "' + imageURL + '".');
 					self.sendSocketNotification('DOWNLOAD_FILE', {
 						url: imageURL,
@@ -266,7 +289,8 @@ Module.register('MMM-CoinMarketCap', {
 		wrapper.classList.add("small");
 		
 		if (!self.loaded) {
-			wrapper.innerHTML += 'Loading...';
+			wrapper.classList.add("loading");
+			wrapper.innerHTML += 'Loading ...';
 			return wrapper;
 		}
 		
@@ -286,9 +310,7 @@ Module.register('MMM-CoinMarketCap', {
 			if (self.currencyData[c.id].loaded) {
 				var row = document.createElement("tr");
 				for (i = 0; i < self.config.view.length; i++) {
-					var cell = document.createElement("td");
-					cell.appendChild(self.getViewColContent(self.config.view[i], c));
-					row.appendChild(cell);
+					row.appendChild(self.getCell(self.config.view[i], c));
 				}
 				table.appendChild(row);
 			}
@@ -324,30 +346,98 @@ Module.register('MMM-CoinMarketCap', {
 	 * @param currency a currency object from the self.config.currencies list
 	 * @return a dom object containing the cell content
 	 */
-	getViewColContent: function(colType, currency) {
+	getCell: function(colType, currency) {
 		var self = this;
+		//Log.log(self.data.name + ': getCell(' + colType + ', ' + currency + ')');
 		var data = self.currencyData[currency.id].data;
+		var cell = document.createElement("td");
 		switch (colType) {
-			case 'name': return document.createTextNode(data.name);
-			case 'symbol': return document.createTextNode(data.symbol);
-			case 'price': return document.createTextNode(data.quotes.USD.price);
+			case 'name': cell.classList.add('cell-' + colType); cell.innerHTML = data.name; break;
+			case 'symbol': cell.classList.add('cell-' + colType); cell.innerHTML = data.symbol; break;
+			case 'price':
+				cell.classList.add('cell-' + colType);
+				cell.innerHTML = self.conformNumber(data.quotes.USD.price, currency.significantDigits, currency.decimalPlaces);
+				break;
+			case 'priceUSD': cell.classList.add('cell-' + colType); cell.innerHTML = data.quotes.USD.price; break;
+			case 'change1h':
+				cell.classList.add('cell-' + colType);
+				if (currency.percentChangeColored && data.quotes.USD.percent_change_1h > 0) { cell.classList.add("positive"); }
+				if (currency.percentChangeColored && data.quotes.USD.percent_change_1h < 0) { cell.classList.add("negative"); }
+				cell.innerHTML = data.quotes.USD.percent_change_1h + '%';
+				break;
+			case 'change24h':
+				cell.classList.add('cell-' + colType);
+				if (currency.percentChangeColored && data.quotes.USD.percent_change_24h > 0) { cell.classList.add("positive"); }
+				if (currency.percentChangeColored && data.quotes.USD.percent_change_24h < 0) { cell.classList.add("negative"); }
+				cell.innerHTML = data.quotes.USD.percent_change_24h + '%';
+				break;
+			case 'change7d':
+				cell.classList.add('cell-' + colType);
+				if (currency.percentChangeColored && data.quotes.USD.percent_change_7d > 0) { cell.classList.add("positive"); }
+				if (currency.percentChangeColored && data.quotes.USD.percent_change_7d < 0) { cell.classList.add("negative"); }
+				cell.innerHTML = data.quotes.USD.percent_change_7d + '%';
+				break;
 			case 'logo':
-				var logoWrapper = document.createElement("span");
-				logoWrapper.classList.add("logo-container");
-				
-				var logoFileName = self.logoFolder + data.symbol.toLowerCase() + '-' + currency.logoSizePX + '.png';
-				if (!self.fileExists(logoFileName)) { logoFileName = self.getLogoURL(currency.logoSizePX, data.id); }
-				//if (self.fileExists(logoFileName)) {
-					var logo = new Image();
-					logo.src = logoFileName;
-					logo.classList.add('logo-' + currency.logoSize);
-					if (!currency.logoColored) { logo.classList.add('image-bw'); }
-					logoWrapper.appendChild(logo);
-				//}
-				return logoWrapper;
+				cell.classList.add('cell-' + colType);
+				var LocalLogoFileName = self.httpLogoFolder + data.symbol.toLowerCase() + '-' + currency.logoSizePX + '.png';
+				var LocalLogoFileNameBW = self.httpLogoFolderBW + data.symbol.toLowerCase() + '-' + currency.logoSizePX + '.png';
+				var LocalLogoExists = self.fileExists(LocalLogoFileName);
+				var logoFileName = self.getLogoURL(currency.logoSizePX, data.id);
+				var filterImageForBW = false;
+				if (currency.logoColored) {
+					if (LocalLogoExists) { logoFileName = LocalLogoFileName; }
+				} else {
+					if (self.fileExists(LocalLogoFileNameBW)) {
+						logoFileName = LocalLogoFileNameBW;
+					} else if(LocalLogoExists) {
+						logoFileName = LocalLogoFileName;
+						filterImageForBW = true;
+					} else {
+						filterImageForBW = true;
+					}
+				}
+				var logo = new Image();
+				logo.src = logoFileName;
+				logo.classList.add('logo-' + currency.logoSize);
+				if (filterImageForBW) { logo.classList.add('image-bw'); }
+				cell.appendChild(logo);
+				break;
+			default: cell.innerHTML = ' ';
 		}
-		return ' ';
+		return cell;
 	},
+	
+	conformNumber: function(number, significantDigits, decimalPlaces) {
+		var self = this;
+		//Log.log(self.data.name + ': conformNumber(' + number + ', ' + significantDigits + ', ' + decimalPlaces + ')');
+		if (significantDigits === 0) {
+			if (decimalPlaces === 0) { return number; }
+			return self.roundNumber(number, decimalPlaces).toFixed(decimalPlaces);
+		} else {
+			var integerPart = Math.floor(number).toString();
+			if (integerPart === '0') { integerPart = ''; }
+			
+			if (decimalPlaces === 0) {
+				if (significantDigits <= integerPart.length) { return Number( Number(number).toPrecision(significantDigits) ); }
+				/*else if (number < 1 && number > 0) {
+					var decimapPos = number.toString().indexOf('.');
+					var decimalPart = decimapPos >= 0 ? number.toString().substring(decimapPos + 1) : '';
+					number = self.roundNumber(Number(decimalPart), significantDigits);
+					Number(decimalPart).toString().length()
+				}*/
+				else { return self.roundNumber(number, significantDigits - integerPart.length); }
+			} else {
+				if (significantDigits <= integerPart.length) { return Number( Number(number).toPrecision(significantDigits) ).toFixed(decimalPlaces); }
+				else { return (self.roundNumber(number, significantDigits - integerPart.length)).toFixed(decimalPlaces); }
+			}
+		}
+		//Number(Math.round(value+'e'+decimals)+'e-'+decimals)
+		//price.toLocaleString(config.language, { style: 'currency', currency: this.config.conversion, maximumSignificantDigits: significantDigits })
+    },
+	
+	roundNumber: function(number, precision) {
+        return Number(Math.round(number + 'e' + precision) + 'e-' + precision);
+    },
 	
 	getLogoURL: function(size, id) {
 		var self = this;
@@ -363,7 +453,7 @@ Module.register('MMM-CoinMarketCap', {
 		var request = new XMLHttpRequest();
 		request.open('HEAD', fileName, false);
 		request.send();
-		return request.status != 404;
+		return Number(request.status) !== 404;
 	},
 	
 	replaceAll: function(str, find, replace) {

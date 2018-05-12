@@ -7,36 +7,54 @@
  * Custom here your css module
  * 
  */
- 
- .MMM-CoinMarketCap table td, .MMM-CoinMarketCap table th {
-	padding-right: 8px; 
- }
+
+.MMM-CoinMarketCap .loading {
+	color: #666666;
+}
+
+.MMM-CoinMarketCap table td, .MMM-CoinMarketCap table th {
+	border-bottom: solid 1px #222;
+	padding: 1px 6px 1px 14px;
+}
  
 .MMM-CoinMarketCap .image-bw {
 	filter: invert(100%) grayscale(100%);
 }
 
-
-.MMM-CoinMarketCap .logo-container img {
-	
+.MMM-CoinMarketCap .negative {
+	color: #FF5A44;
+}
+.MMM-CoinMarketCap .positive {
+	color: #A3EA80;
 }
 
-.MMM-CoinMarketCap .logo-container img.logo-small {
+
+
+.MMM-CoinMarketCap .cell-change1h, .MMM-CoinMarketCap .cell-change24h, .MMM-CoinMarketCap .cell-change7d {
+	text-align: right;
+	padding: 1px 14px 1px 6px;
+}
+
+.MMM-CoinMarketCap .cell-price, .MMM-CoinMarketCap .cell-priceUSD {
+	text-align: right;
+	padding: 1px 14px 1px 6px;
+}
+
+
+.MMM-CoinMarketCap .cell-logo img.logo-small {
 	height: 16px;
 	width: 16px;
 }
-
-.MMM-CoinMarketCap .logo-container img.logo-medium {
+.MMM-CoinMarketCap .cell-logo img.logo-medium {
 	height: 32px;
 	width: 32px;
 }
-
-.MMM-CoinMarketCap .logo-container img.logo-large {
+.MMM-CoinMarketCap .cell-logo img.logo-large {
 	height: 64px;
 	width: 64px;
 }
 
-.MMM-CoinMarketCap .logo-container img.logo-x-large {
+.MMM-CoinMarketCap .cell-logo img.logo-x-large {
 	height: 128px;
 	width: 128px;
 }
