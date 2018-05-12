@@ -8,7 +8,7 @@
  * MIT Licensed.
  */
 
-var axis, Log;
+var axis, Log, config;
 Module.register('MMM-CoinMarketCap', {
 	
 	defaults: {
@@ -32,9 +32,10 @@ Module.register('MMM-CoinMarketCap', {
 		logoColored: false, // if true, use the original logo, if false, use filter to make a black and white version
 		percentChangeColored: true,
 		cacheLogos: false, // Whether to download the logos from coinmarketcap or just access them from the site directly
-		conversion: 'USD',
-		significantDigits: 2,
-		decimalPlaces: 2,
+		conversion: 'EUR',
+		significantDigits: 0,
+		decimalPlaces: 0,
+		usePriceDigitGrouping: true, // Whether to use loacle specific separators for currency (1000 vs 1,000)
 		
 	},
 
@@ -43,6 +44,7 @@ Module.register('MMM-CoinMarketCap', {
 	start: function() {
 		var self = this;
 		var i, c;
+		Log.log(self.data.name + ': global config: ' + JSON.stringify(config));
 		self.sendSocketNotification('INIT', null);
 		self.loaded = false;
 		self.listings = null;
@@ -103,6 +105,7 @@ Module.register('MMM-CoinMarketCap', {
 		else { self.config.significantDigits = Math.round(self.config.significantDigits); }
 		if (!axis.isNumber(self.config.decimalPlaces) || self.config.decimalPlaces < 0) { self.config.decimalPlaces = self.defaults.decimalPlaces; }
 		else { self.config.decimalPlaces = Math.round(self.config.decimalPlaces); }
+		if (!axis.isBoolean(self.config.usePriceDigitGrouping)) { self.config.usePriceDigitGrouping = self.defaults.usePriceDigitGrouping; }
 		
 		// Configure all the currencies as objects with the requested settings
 		for (i = 0; i < self.config.currencies.length; i++) {
@@ -121,6 +124,7 @@ Module.register('MMM-CoinMarketCap', {
 			else { c.significantDigits = Math.round(c.significantDigits); }
 			if (!axis.isNumber(c.decimalPlaces) || c.decimalPlaces < 0) { c.decimalPlaces = self.defaults.decimalPlaces; }
 			else { c.decimalPlaces = Math.round(c.decimalPlaces); }
+			if (!axis.isBoolean(c.usePriceDigitGrouping)) { c.usePriceDigitGrouping = self.config.usePriceDigitGrouping; }
 			
 		}
 		//Log.log(self.data.name + ': this.file(\'test\') "' + this.file('test') + '".');
@@ -356,26 +360,38 @@ Module.register('MMM-CoinMarketCap', {
 			case 'symbol': cell.classList.add('cell-' + colType); cell.innerHTML = data.symbol; break;
 			case 'price':
 				cell.classList.add('cell-' + colType);
-				cell.innerHTML = self.conformNumber(data.quotes.USD.price, currency.significantDigits, currency.decimalPlaces);
+				var price = self.conformNumber(data.quotes.USD.price, currency.significantDigits, currency.decimalPlaces);
+				var formatLocaleOptions = { style: 'currency', currency: self.config.conversion, useGrouping: currency.usePriceDigitGrouping };
+				if (currency.decimalPlaces !== 0) { formatLocaleOptions.minimumFractionDigits = formatLocaleOptions.maximumFractionDigits = currency.decimalPlaces; }
+				cell.innerHTML = Number(price).toLocaleString(config.language, formatLocaleOptions);
 				break;
-			case 'priceUSD': cell.classList.add('cell-' + colType); cell.innerHTML = data.quotes.USD.price; break;
+			case 'priceUSD':
+				cell.classList.add('cell-' + colType);
+				var price = self.conformNumber(data.quotes.USD.price, currency.significantDigits, currency.decimalPlaces);
+				var formatLocaleOptions = { style: 'currency', currency: 'USD', useGrouping: currency.usePriceDigitGrouping };
+				if (currency.decimalPlaces !== 0) { formatLocaleOptions.minimumFractionDigits = formatLocaleOptions.maximumFractionDigits = currency.decimalPlaces; }
+				cell.innerHTML = Number(price).toLocaleString(config.language, formatLocaleOptions);
+				break;
 			case 'change1h':
 				cell.classList.add('cell-' + colType);
 				if (currency.percentChangeColored && data.quotes.USD.percent_change_1h > 0) { cell.classList.add("positive"); }
 				if (currency.percentChangeColored && data.quotes.USD.percent_change_1h < 0) { cell.classList.add("negative"); }
-				cell.innerHTML = data.quotes.USD.percent_change_1h + '%';
+				cell.innerHTML = Number(data.quotes.USD.percent_change_1h / 100).toLocaleString(config.language,
+								{ style: 'percent', currency: self.config.conversion, maximumFractionDigits: 2 });
 				break;
 			case 'change24h':
 				cell.classList.add('cell-' + colType);
 				if (currency.percentChangeColored && data.quotes.USD.percent_change_24h > 0) { cell.classList.add("positive"); }
 				if (currency.percentChangeColored && data.quotes.USD.percent_change_24h < 0) { cell.classList.add("negative"); }
-				cell.innerHTML = data.quotes.USD.percent_change_24h + '%';
+				cell.innerHTML = Number(data.quotes.USD.percent_change_24h / 100).toLocaleString(config.language,
+								{ style: 'percent', currency: self.config.conversion, maximumFractionDigits: 2 });
 				break;
 			case 'change7d':
 				cell.classList.add('cell-' + colType);
 				if (currency.percentChangeColored && data.quotes.USD.percent_change_7d > 0) { cell.classList.add("positive"); }
 				if (currency.percentChangeColored && data.quotes.USD.percent_change_7d < 0) { cell.classList.add("negative"); }
-				cell.innerHTML = data.quotes.USD.percent_change_7d + '%';
+				cell.innerHTML = Number(data.quotes.USD.percent_change_7d / 100).toLocaleString(config.language,
+								{ style: 'percent', currency: self.config.conversion, maximumFractionDigits: 2 });
 				break;
 			case 'logo':
 				cell.classList.add('cell-' + colType);
