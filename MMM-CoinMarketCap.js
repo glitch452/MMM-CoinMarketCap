@@ -32,7 +32,7 @@ Module.register('MMM-CoinMarketCap', {
 		logoColored: false, // if true, use the original logo, if false, use filter to make a black and white version
 		percentChangeColored: true,
 		cacheLogos: false, // Whether to download the logos from coinmarketcap or just access them from the site directly
-		conversion: 'EUR',
+		conversion: 'CAD',
 		significantDigits: 0,
 		decimalPlaces: 0,
 		usePriceDigitGrouping: true, // Whether to use loacle specific separators for currency (1000 vs 1,000)
@@ -44,9 +44,9 @@ Module.register('MMM-CoinMarketCap', {
 	start: function() {
 		var self = this;
 		var i, c;
-		Log.log(self.data.name + ': global config: ' + JSON.stringify(config));
 		self.sendSocketNotification('INIT', null);
 		self.loaded = false;
+		self.dataLoaded = false;
 		self.listings = null;
 		self.currencyData = {};
 		self.logosBaseURL = 'https://s2.coinmarketcap.com/static/img/coins/';
@@ -127,10 +127,10 @@ Module.register('MMM-CoinMarketCap', {
 			if (!axis.isBoolean(c.usePriceDigitGrouping)) { c.usePriceDigitGrouping = self.config.usePriceDigitGrouping; }
 			
 		}
-		//Log.log(self.data.name + ': this.file(\'test\') "' + this.file('test') + '".');
 		
 		self.config.columnHeaderText.price = self.replaceAll(self.config.columnHeaderText.price, '{conversion}', self.config.conversion);
 		
+		Log.log(self.data.name + ': self.config: ' + JSON.stringify(self.config));
 		self.getListings(1);
 	},
 	
@@ -150,7 +150,7 @@ Module.register('MMM-CoinMarketCap', {
 	getSingleCurrencyDetails: function(id, attemptNum) {
 		var self = this;
 		Log.log(self.data.name + ': Request sent to update ' + self.currencyData[id].name + ' using ID: ' + id + '.  ');
-		var url = self.apiBaseURL + self.apiVersion + self.apiTickerEndpoint + id + '/';
+		var url = self.apiBaseURL + self.apiVersion + self.apiTickerEndpoint + id + '/?convert=' + self.config.conversion;
 		self.sendSocketNotification('GET_CURRENCY_DETAILS', { url: url, id: id, attemptNum: attemptNum, notification: 'CURRENCY_DETAILS_RECEIVED' } );
 	},
 	
@@ -179,7 +179,6 @@ Module.register('MMM-CoinMarketCap', {
 					self.sendSocketNotification('DOWNLOAD_FILE', {
 						url: imageURL,
 						saveToFileName: self.LocalLogoFolder + symbol + '-' + sizePX + '.png',
-						//encoding: 'binary', //'utf8', 'ascii', 'binary', 'hex', 'base64', 'utf16le'
 						attemptNum: 1,
 						notification: 'LOGO_DOWNLOADED'
 					});
@@ -227,8 +226,6 @@ Module.register('MMM-CoinMarketCap', {
 		} else if (notification === 'LOGO_DOWNLOADED') {
 			if (payload.isSuccessful) {
 				Log.log(self.data.name + ': Successfully download logo: "' + payload.original.saveToFileName + '".');
-				//Log.log(self.data.name + ': response: "' + JSON.stringify(payload.response) + '".');
-				//Log.log(self.data.name + ': data: "' + JSON.stringify(payload.data) + '".');
 			} else {
 				Log.log(self.data.name + ': Logo download failed for: "' + payload.original.saveToFileName + '".');
 			}
@@ -272,8 +269,8 @@ Module.register('MMM-CoinMarketCap', {
 	updateCurrency: function(data) {
 		var self = this;
 		if (!self.currencyData[data.id].loaded) { self.currencyData[data.id].loaded = true; }
+		if (!self.dataLoaded) { self.dataLoaded = true; }
 		self.currencyData[data.id].data = data;
-		//Log.log(self.data.name + ': The currency "' + data.name + '" has been updated.');
 	},
 	
 	// Override the default notificationReceived function
@@ -301,6 +298,12 @@ Module.register('MMM-CoinMarketCap', {
 		if (!axis.isArray(self.listings)) {
 			wrapper.innerHTML += 'Unable to get data from CoinMarketCap.com';
 			wrapper.innerHTML += '<br />Error: ' + self.listings;
+			return wrapper;
+		}
+		
+		if (!self.dataLoaded) {
+			wrapper.classList.add("loading");
+			wrapper.innerHTML += 'Loading ...';
 			return wrapper;
 		}
 		
@@ -360,10 +363,17 @@ Module.register('MMM-CoinMarketCap', {
 			case 'symbol': cell.classList.add('cell-' + colType); cell.innerHTML = data.symbol; break;
 			case 'price':
 				cell.classList.add('cell-' + colType);
-				var price = self.conformNumber(data.quotes.USD.price, currency.significantDigits, currency.decimalPlaces);
-				var formatLocaleOptions = { style: 'currency', currency: self.config.conversion, useGrouping: currency.usePriceDigitGrouping };
-				if (currency.decimalPlaces !== 0) { formatLocaleOptions.minimumFractionDigits = formatLocaleOptions.maximumFractionDigits = currency.decimalPlaces; }
-				cell.innerHTML = Number(price).toLocaleString(config.language, formatLocaleOptions);
+				if (axis.isObject(data.quotes[self.config.conversion]) && !axis.isNull(data.quotes[self.config.conversion])) {
+					var price = self.conformNumber(data.quotes[self.config.conversion].price, currency.significantDigits, currency.decimalPlaces);
+					var formatLocaleOptions = { style: 'currency', currency: self.config.conversion, useGrouping: currency.usePriceDigitGrouping };
+					if (currency.decimalPlaces !== 0) { formatLocaleOptions.minimumFractionDigits = formatLocaleOptions.maximumFractionDigits = currency.decimalPlaces; }
+					price = Number(price).toLocaleString(config.language, formatLocaleOptions);
+					var regex = /[A-Z]+(.+)/;
+					var matches = regex.exec(price);
+					cell.innerHTML = matches === null ? price : matches[1];
+				} else {
+					cell.innerHTML = 'N/A';	
+				}
 				break;
 			case 'priceUSD':
 				cell.classList.add('cell-' + colType);
