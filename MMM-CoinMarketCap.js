@@ -438,8 +438,7 @@ Module.register('MMM-CoinMarketCap', {
 			case 'graph':
 				cell.classList.add('cell-' + colType);
 				var graph = new Image();
-				// 1d, 7d, 30d
-				graph.src = 'https://s2.coinmarketcap.com/generated/sparklines/web/7d/usd/' + data.id + '.png';
+				graph.src = 'https://s2.coinmarketcap.com/generated/sparklines/web/' + self.config.graphRange + 'd/usd/' + data.id + '.png';
 				cell.appendChild(graph);
 				break;
 			default: cell.innerHTML = ' ';
