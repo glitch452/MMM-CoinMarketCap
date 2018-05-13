@@ -25,17 +25,19 @@ Module.register('MMM-CoinMarketCap', {
 		updateInterval: 10, // Minutes, minimum 5
 		retryDelay: 5, // Seconds, minimum 0
 		//view: [ 'logo', 'price' ],
-		view: [ 'logo', 'symbol', 'name', 'price', 'priceUSD', 'change1h', 'change24h', 'change7d' ], // The columns to display, in the order that they will be displayed
-		showColumnHeaders: [ 'symbol', 'price', 'priceUSD', 'logo', 'change1h', 'change24h', 'change7d' ], // Enable / Disagle the column header text.  Set to an array to enable by name
-		columnHeaderText: { name: 'Currency', symbol: 'Currency', price: 'Price ({conversion})', priceUSD: 'Price (USD)', logo: '', change1h: 'Hour', change24h: 'Day', change7d: 'Week' },
+		view: [ 'logo', 'symbol', 'name', 'price', 'priceUSD', 'change1h', 'change24h', 'change7d', 'graph' ], // The columns to display, in the order that they will be displayed
+		showColumnHeaders: [ 'symbol', 'price', 'priceUSD', 'logo', 'change1h', 'change24h', 'change7d', 'graph' ], // Enable / Disagle the column header text.  Set to an array to enable by name
+		columnHeaderText: { name: 'Currency', symbol: 'Currency', price: 'Price ({conversion})', priceUSD: 'Price (USD)', logo: '', change1h: 'Hour', 
+							change24h: 'Day', change7d: 'Week', graph: 'Trend ({range})' },
 		logoSize: 'medium', // small, medium, large, 'x-large'
 		logoColored: false, // if true, use the original logo, if false, use filter to make a black and white version
 		percentChangeColored: true,
 		cacheLogos: false, // Whether to download the logos from coinmarketcap or just access them from the site directly
-		conversion: 'CAD',
+		conversion: 'EUR',
 		significantDigits: 0,
 		decimalPlaces: 0,
 		usePriceDigitGrouping: true, // Whether to use loacle specific separators for currency (1000 vs 1,000)
+		graphRange: 30,
 		
 	},
 
@@ -57,13 +59,14 @@ Module.register('MMM-CoinMarketCap', {
 		self.maxListingAttempts = 4; // How many times to try downloading the listing before giving up and displaying an error
 		self.apiTickerEndpoint = 'ticker/';
 		self.maxTickerAttempts = 2; // How many times to try updating a currency before giving up
-		self.allColumnTypes = [ 'name', 'symbol', 'price', 'priceUSD', 'logo', 'change1h', 'change24h', 'change7d' ];
+		self.allColumnTypes = [ 'name', 'symbol', 'price', 'priceUSD', 'logo', 'change1h', 'change24h', 'change7d', 'graph' ];
 		self.tableHeader = null;
 		self.LocalLogoFolder = 'modules/' + self.data.name + '/public/logos/';
 		self.LocalLogoFolderBW = 'modules/' + self.data.name + '/public/logos_bw/';
 		self.httpLogoFolder = '/' + self.data.name + '/logos/';
 		self.httpLogoFolderBW = '/' + self.data.name + '/logos_bw/';
 		self.validLogoSizes = [ 'small', 'medium', 'large', 'x-large' ];
+		self.validGraphRangeValues = [ 1, 7, 30 ];
 		self.logoSizeToPX = { 'small': 16, 'medium': 32, 'large': 64, 'x-large': 128 };
 		self.validConversions = [ "AUD", "BRL", "CAD", "CHF", "CLP", "CNY", "CZK", "DKK", "EUR", "GBP", "HKD", "HUF", "IDR", "ILS", "INR", 
 								"JPY", "KRW", "MXN", "MYR", "NOK", "NZD", "PHP", "PKR", "PLN", "RUB", "SEK", "SGD", "THB", "TRY", "TWD", 
@@ -106,6 +109,7 @@ Module.register('MMM-CoinMarketCap', {
 		if (!axis.isNumber(self.config.decimalPlaces) || self.config.decimalPlaces < 0) { self.config.decimalPlaces = self.defaults.decimalPlaces; }
 		else { self.config.decimalPlaces = Math.round(self.config.decimalPlaces); }
 		if (!axis.isBoolean(self.config.usePriceDigitGrouping)) { self.config.usePriceDigitGrouping = self.defaults.usePriceDigitGrouping; }
+		if (!self.validGraphRangeValues.includes(self.config.graphRange)) { self.config.graphRange = self.defaults.graphRange; }
 		
 		// Configure all the currencies as objects with the requested settings
 		for (i = 0; i < self.config.currencies.length; i++) {
@@ -129,6 +133,9 @@ Module.register('MMM-CoinMarketCap', {
 		}
 		
 		self.config.columnHeaderText.price = self.replaceAll(self.config.columnHeaderText.price, '{conversion}', self.config.conversion);
+		var range = '1 week';
+		if (self.config.graphRange === 1) { range = '1 day'; } else if (self.config.graphRange === 30) { range = '1 month'; }
+		self.config.columnHeaderText.graph = self.replaceAll(self.config.columnHeaderText.graph, '{range}', range);
 		
 		Log.log(self.data.name + ': self.config: ' + JSON.stringify(self.config));
 		self.getListings(1);
@@ -427,6 +434,13 @@ Module.register('MMM-CoinMarketCap', {
 				logo.classList.add('logo-' + currency.logoSize);
 				if (filterImageForBW) { logo.classList.add('image-bw'); }
 				cell.appendChild(logo);
+				break;
+			case 'graph':
+				cell.classList.add('cell-' + colType);
+				var graph = new Image();
+				// 1d, 7d, 30d
+				graph.src = 'https://s2.coinmarketcap.com/generated/sparklines/web/7d/usd/' + data.id + '.png';
+				cell.appendChild(graph);
 				break;
 			default: cell.innerHTML = ' ';
 		}
