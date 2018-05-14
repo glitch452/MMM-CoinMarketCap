@@ -34,7 +34,7 @@ Module.register('MMM-CoinMarketCap', {
 		logoColored: false, // if true, use the original logo, if false, use filter to make a black and white version
 		percentChangeColored: true,
 		cacheLogos: false, // Whether to download the logos from coinmarketcap or just access them from the site directly
-		conversion: 'CAD',
+		conversion: 'EUR',
 		significantDigits: 0,
 		decimalPlaces: 0,
 		usePriceDigitGrouping: true, // Whether to use loacle specific separators for currency (1000 vs 1,000)
@@ -44,6 +44,7 @@ Module.register('MMM-CoinMarketCap', {
 		showRowSeparator: true,
 		fontColor: '', //https://www.w3schools.com/cssref/css_colors_legal.asp
 		showCurrencyWithPrice: false,
+		developerMode: false,
 		
 	},
 
@@ -52,7 +53,8 @@ Module.register('MMM-CoinMarketCap', {
 	start: function() {
 		var self = this;
 		var i, c;
-		self.sendSocketNotification('INIT', null);
+		self.modID = self.identifier + '_' + Math.random().toString().substring(2);
+		self.sendSocketNotification('INIT', { modID: self.modID } );
 		self.loaded = false;
 		self.dataLoaded = false;
 		self.listings = null;
@@ -67,10 +69,10 @@ Module.register('MMM-CoinMarketCap', {
 		self.maxTickerAttempts = 2; // How many times to try updating a currency before giving up
 		self.allColumnTypes = [ 'name', 'symbol', 'price', 'priceUSD', 'logo', 'change1h', 'change24h', 'change7d', 'graph', 'changes', 'priceWithChanges' ];
 		self.tableHeader = null;
-		self.LocalLogoFolder = 'modules/' + self.data.name + '/public/logos/';
-		self.LocalLogoFolderBW = 'modules/' + self.data.name + '/public/logos_bw/';
-		self.httpLogoFolder = '/' + self.data.name + '/logos/';
-		self.httpLogoFolderBW = '/' + self.data.name + '/logos_bw/';
+		self.LocalLogoFolder = self.path + '/public/logos/';
+		self.LocalLogoFolderBW = self.path + '/public/logos_bw/';
+		self.httpLogoFolder = '/' + self.name + '/logos/';
+		self.httpLogoFolderBW = '/' + self.name + '/logos_bw/';
 		self.validLogoSizes = [ 'small', 'medium', 'large', 'x-large' ];
 		self.validFontSizes = [ 'x-small', 'small', 'medium', 'large', 'x-large' ];
 		self.validGraphSizes = [ 'x-small', 'small', 'medium', 'large', 'x-large' ];
@@ -123,6 +125,7 @@ Module.register('MMM-CoinMarketCap', {
 		if (!axis.isBoolean(self.config.showRowSeparator)) { self.config.showRowSeparator = self.defaults.showRowSeparator; }
 		if (!axis.isString(self.config.fontColor)) { self.config.fontColor = self.defaults.fontColor; }
 		if (!axis.isBoolean(self.config.showCurrencyWithPrice)) { self.config.showCurrencyWithPrice = self.defaults.showCurrencyWithPrice; }
+		if (!axis.isBoolean(self.config.developerMode)) { self.config.developerMode = self.defaults.developerMode; }
 		
 		// Configure all the currencies as objects with the requested settings
 		for (i = 0; i < self.config.currencies.length; i++) {
@@ -155,33 +158,34 @@ Module.register('MMM-CoinMarketCap', {
 		self.config.columnHeaderText.graph = self.replaceAll(self.config.columnHeaderText.graph, '{range}', range);
 		self.config.columnHeaderText.graph = self.replaceAll(self.config.columnHeaderText.graph, '{days}', self.config.graphRange);
 		
-		//Log.log(self.data.name + ': self.config: ' + JSON.stringify(self.config));
+		self.log(('self.config: ' + JSON.stringify(self.config)), 'dev');
+		self.log(('self.data: ' + JSON.stringify(self.data)), 'dev');
 		self.getListings(1);
 	},
 	
 	scheduleUpdate: function() {
         var self = this;
-		Log.log(self.data.name + ': Update scheduled to run automatically every ' + (self.config.updateInterval / (1000 * 60)) + ' minutes.');
+		self.log('Update scheduled to run automatically every ' + (self.config.updateInterval / (1000 * 60)) + ' minutes.');
         setInterval(function() { self.getAllCurrencyDetails(); }, self.config.updateInterval);
     },
 	
 	getListings: function(attemptNum) {
 		var self = this;
-		Log.log(self.data.name + ': Request sent for currency listings.  ');
+		self.log('Request sent for currency listings.  ');
 		var url = self.apiBaseURL + self.apiVersion + self.apiListingsEndpoint;
-		self.sendSocketNotification('GET_LISTINGS', { url: url, attemptNum: attemptNum, notification: 'LISTINGS_RECEIVED' } );
+		self.sendSocketNotification('GET_LISTINGS', { modID: self.modID, url: url, attemptNum: attemptNum, notification: 'LISTINGS_RECEIVED' } );
 	},
 	
 	getSingleCurrencyDetails: function(id, attemptNum) {
 		var self = this;
-		Log.log(self.data.name + ': Request sent to update ' + self.currencyData[id].name + ' using ID: ' + id + '.  ');
+		self.log('Request sent to update ' + self.currencyData[id].name + ' using ID: ' + id + '.  ');
 		var url = self.apiBaseURL + self.apiVersion + self.apiTickerEndpoint + id + '/?convert=' + self.config.conversion;
-		self.sendSocketNotification('GET_CURRENCY_DETAILS', { url: url, id: id, attemptNum: attemptNum, notification: 'CURRENCY_DETAILS_RECEIVED' } );
+		self.sendSocketNotification('GET_CURRENCY_DETAILS', { modID: self.modID, url: url, id: id, attemptNum: attemptNum, notification: 'CURRENCY_DETAILS_RECEIVED' } );
 	},
 	
 	getAllCurrencyDetails: function() {
 		var self = this;
-		Log.log(self.data.name + ': Update triggered.');
+		self.log('Update triggered.');
 		for (var key in self.currencyData) {
 			if (!self.currencyData.hasOwnProperty(key)) { continue; }
 			self.getSingleCurrencyDetails(key, 1);
@@ -191,7 +195,6 @@ Module.register('MMM-CoinMarketCap', {
 	cacheLogos: function() {
 		var self = this;
 		if (!self.config.cacheLogos) { return; }
-		//Log.log(self.data.name + ': Requesting to cache logos.');
 		for (var key in self.currencyData) {
 			if (!self.currencyData.hasOwnProperty(key)) { continue; }
 			var symbol = self.currencyData[key].symbol.toLowerCase();
@@ -200,8 +203,9 @@ Module.register('MMM-CoinMarketCap', {
 				var sizePX = self.logoSizeToPX[sizeKey];
 				var imageURL = self.getLogoURL(sizePX, key);
 				if (!self.fileExists(self.httpLogoFolder + symbol + '-' + sizePX + '.png')) {
-					Log.log(self.data.name + ': Requesting logo download: "' + imageURL + '".');
+					self.log('Requesting logo download: "' + imageURL + '".');
 					self.sendSocketNotification('DOWNLOAD_FILE', {
+						modID: self.modID,
 						url: imageURL,
 						saveToFileName: self.LocalLogoFolder + symbol + '-' + sizePX + '.png',
 						attemptNum: 1,
@@ -215,11 +219,22 @@ Module.register('MMM-CoinMarketCap', {
 	// socketNotificationReceived from node_helper
 	socketNotificationReceived: function(notification, payload) {
 		var self = this;
+		
+		if (!axis.isString(payload.original.modID)) {
+			if (notification === 'LOG') { self.log(payload.message); }
+			return;
+		}
+		// Filter our notifications for other instances
+		if (payload.original.modID !== self.modID) {
+			self.log(('Notification ignored for ID "' + payload.original.modID + '".'), 'dev');
+			return;
+		}
+		
 		if (notification === 'LOG') {
-			Log.log(self.data.name + ': ' + payload);
+			self.log(payload.message, payload.messageType);
 		} else if (notification === 'LISTINGS_RECEIVED' && !self.loaded) {
 			if (payload.isSuccessful && payload.data.metadata.error === null) {
-				Log.log(self.data.name + ': Listings retrieved successfully after ' + payload.original.attemptNum + ' attempt(s).');
+				self.log('Listings retrieved successfully after ' + payload.original.attemptNum + ' attempt(s).');
 				self.listings = payload.data.data;
 				self.filterCurrenciesAndSetupDataSet();
 				self.loaded = true;
@@ -227,10 +242,10 @@ Module.register('MMM-CoinMarketCap', {
 				self.scheduleUpdate();
 				self.getAllCurrencyDetails();
 				self.cacheLogos();
-				//Log.log(self.data.name + ': self.config.currencies: ' + JSON.stringify(self.config.currencies));
-				//Log.log(self.data.name + ': self.currencyData: ' + JSON.stringify(self.currencyData));
+				self.log(('self.config.currencies: ' + JSON.stringify(self.config.currencies)), 'dev');
+				//self.log(('self.currencyData: ' + JSON.stringify(self.currencyData)), 'dev');
 			} else if (payload.original.attemptNum < self.maxListingAttempts) {
-				Log.log(self.data.name + ': Listings retrieval FAILED! Retrying in 8 seconds.');
+				self.log('Listings retrieval FAILED! Retrying in 8 seconds.');
 				setTimeout(function() { self.getListings(payload.original.attemptNum + 1); }, 8000);
 			} else {
 				if (payload.data) { self.listings = payload.data; }
@@ -240,19 +255,19 @@ Module.register('MMM-CoinMarketCap', {
 			}
 		} else if (notification === 'CURRENCY_DETAILS_RECEIVED') {
 			if (payload.isSuccessful && payload.data.metadata.error === null) {
-				Log.log(self.data.name + ': Currency Update Received for ' + self.currencyData[payload.original.id].name + 
+				self.log('Currency Update Received for ' + self.currencyData[payload.original.id].name + 
 					' using ID: ' + payload.original.id + ' after ' + payload.original.attemptNum + ' attempt(s).');
 				self.updateCurrency(payload.data.data);
 				self.updateDom(0);
 			} else if (payload.original.attemptNum < self.maxTickerAttempts) {
-				Log.log(self.data.name + ': Currency Update FAILED for ' + self.currencyData[payload.original.id].name + ' using ID: ' + payload.original.id + '. Retrying in ' + (self.config.retryDelay/1000) + ' seconds.');
+				self.log('Currency Update FAILED for ' + self.currencyData[payload.original.id].name + ' using ID: ' + payload.original.id + '. Retrying in ' + (self.config.retryDelay/1000) + ' seconds.');
 				setTimeout(function() { self.getCurrencyDetails(payload.original.id, payload.original.attemptNum + 1); }, self.config.retryDelay);
 			}
 		} else if (notification === 'LOGO_DOWNLOADED') {
 			if (payload.isSuccessful) {
-				Log.log(self.data.name + ': Successfully download logo: "' + payload.original.saveToFileName + '".');
+				self.log('Successfully download logo: "' + payload.original.saveToFileName + '".');
 			} else {
-				Log.log(self.data.name + ': Logo download failed for: "' + payload.original.saveToFileName + '".');
+				self.log('Logo download failed for: "' + payload.original.saveToFileName + '".');
 			}
 		}
 	},
@@ -265,7 +280,7 @@ Module.register('MMM-CoinMarketCap', {
 			c = self.config.currencies[i];
 			listing = self.selectListing(c.id, c.name);
 			if (axis.isUndefined(listing)) {
-				Log.log(self.data.name + ': Unable to find currency with id: "' + c.id + '" or name: "' + c.name + '".');
+				self.log('Unable to find currency with id: "' + c.id + '" or name: "' + c.name + '".');
 			} else {
 				c.id = listing.id;
 				c.name = listing.name;
@@ -390,7 +405,6 @@ Module.register('MMM-CoinMarketCap', {
 	 */
 	getCell: function(colType, currency) {
 		var self = this;
-		//Log.log(self.data.name + ': getCell(' + colType + ', ' + currency + ')');
 		var data = self.currencyData[currency.id].data;
 		var cell = document.createElement('td');
 		switch (colType) {
@@ -408,7 +422,7 @@ Module.register('MMM-CoinMarketCap', {
 					cell.innerHTML = matches === null ? price : matches[1];
 					if (currency.showCurrencyWithPrice) { cell.innerHTML += ' ' + self.config.conversion; }
 				} else {
-					cell.innerHTML = 'N/A';	
+					cell.innerHTML = '?';	
 				}
 				break;
 			case 'priceUSD':
@@ -509,7 +523,6 @@ Module.register('MMM-CoinMarketCap', {
 	 */
 	conformNumber: function(number, significantDigits, decimalPlaces) {
 		var self = this;
-		//Log.log(self.data.name + ': conformNumber(' + number + ', ' + significantDigits + ', ' + decimalPlaces + ')');
 		if (!axis.isNumber(significantDigits) || significantDigits < 0) { significantDigits = 0; }
 		if (!axis.isNumber(decimalPlaces) || decimalPlaces < 0) { decimalPlaces = 0; }
 		significantDigits = Math.round(significantDigits);
@@ -544,7 +557,6 @@ Module.register('MMM-CoinMarketCap', {
 	
 	getLogoURL: function(size, id) {
 		var self = this;
-		//Log.log(self.data.name + ': getLogoURL(): size = "' + size + '", id: "' + id + '".');
 		if (axis.isString(size)) { size = self.logoSizeToPX[size]; }
 		var output = self.logosURLTemplate;
 		output = self.replaceAll(output, '{size}', size.toString());
@@ -591,5 +603,20 @@ Module.register('MMM-CoinMarketCap', {
 			en: "translations/en.json",
 		};
 	},
+	
+	log: function(message, type) {
+		var self = this;
+		if (self.config.developerMode) {
+			var date = new Date();
+			var time = date.getHours() + ':' + date.getMinutes() + ':' + date.getSeconds();
+			message = self.name + ': (' + time + ') ' + message;
+		} else { message = self.name + ': ' + message; }
+		switch (type) {
+			case 'error': Log.error(message); break;
+			case 'info': Log.info(message); break;
+			case 'dev': if (self.config.developerMode) { Log.log(message); } break;
+			default: Log.log(message);
+		}
+	}
 	
 });

@@ -47,7 +47,7 @@
  * Main Table CSS
  */
 .MMM-CoinMarketCap table td, .MMM-CoinMarketCap table th {
-	padding: 2px 8px 2px 8px;
+	padding: 4px 8px 4px 8px;
 	text-align: left;
 	vertical-align: middle;
 }

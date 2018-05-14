@@ -22,16 +22,17 @@ module.exports = NodeHelper.create({
 		var self = this;
 		console.log(self.name + ': Socket Notification Received: "' + notification + '".');
 		if (notification === 'GET_LISTINGS') {
-			self.sendSocketNotification(payload.notification, { isSuccessful: true, original: payload, response: null, data: self.listing });
+			self.sendSocketNotification(payload.notification, { original: payload, isSuccessful: true, response: null, data: self.listing });
 			//self.getAndReturnJSON(payload);
-		} else if (notification === "GET_CURRENCY_DETAILS") {
+		} else if (notification === 'GET_CURRENCY_DETAILS') {
 			self.getAndReturnJSON(payload);
 		} else if (notification === 'DOWNLOAD_FILE') {
 			self.downloadFile(payload);
 		} else if (notification === 'INIT') {
-			//self.sendSocketNotification('LOG', '__dirname: ' + __dirname); // /home/pi/MagicMirror/modules/MMM-CoinMarketCap			
-			//self.sendSocketNotification('LOG', 'process.cwd(): ' + process.cwd()); // home/pi/MagicMirror
-			self.sendSocketNotification('LOG', 'node_helper.js loaded successfully.'); 
+			//self.sendSocketNotification('LOG', { id: payload.id, message: ('__dirname: ' + __dirname) } ); // /home/pi/MagicMirror/modules/MMM-CoinMarketCap			
+			//self.sendSocketNotification('LOG', { id: payload.id, message: ('process.cwd(): ' + process.cwd()) } ); // home/pi/MagicMirror
+			self.sendSocketNotification('LOG', { original: payload, message: ('INIT received from: ' + payload.modID + '.'), messageType: 'dev' } );
+			self.sendSocketNotification('LOG', { original: payload, message: ('node_helper.js loaded successfully.'), messageType: 'dev' } );
 		}
 	},
 	
@@ -40,9 +41,9 @@ module.exports = NodeHelper.create({
 		request({ url: payload.url, method: 'GET' }, function (error, response, body) {
 			var result;
 			if (!error && response.statusCode === 200) {
-				result = { isSuccessful: true, original: payload, response: response, data: JSON.parse(body) };
+				result = { original: payload, isSuccessful: true, response: response, data: JSON.parse(body) };
 			} else {
-				result = { isSuccessful: false, original: payload, response: response, data: error };
+				result = { original: payload, isSuccessful: false, response: response, data: error };
 			}
 			if (typeof payload.notification === 'string') { self.sendSocketNotification(payload.notification, result); }
 		});
@@ -53,16 +54,19 @@ module.exports = NodeHelper.create({
 		request({ url: payload.url, encoding: 'binary', method: 'GET' }, function (error, response, body) {
 			var result;
 			if (!error && response.statusCode === 200) {
-				result = { isSuccessful: true, original: payload, response: response, data: body };
+				result = { original: payload, isSuccessful: true, response: response, data: body };
 			} else {
-				result = { isSuccessful: false, original: payload, response: response, data: error };
+				result = { original: payload, isSuccessful: false, response: response, data: error };
 			}
 			if (typeof payload.notification === 'string') { self.sendSocketNotification(payload.notification, result); }
 			// If the download was successful, try to save the file
 			if (result.isSuccessful) {
 				fs.writeFile(payload.saveToFileName, response.body, { encoding: 'binary' }, function(err){
-					if (!err) { self.sendSocketNotification('LOG', 'Successfully saved "' + payload.url + '" as: "' + payload.saveToFileName + '".'); }
-					else { self.sendSocketNotification('LOG', 'Failed to save "' + payload.url + '" as: "' + payload.saveToFileName + '".'); }
+					if (err) {
+						self.sendSocketNotification('LOG', { original: payload, message: ('Failed to save "' + payload.url + '" as: "' + payload.saveToFileName + '".') });
+					} else {
+						self.sendSocketNotification('LOG', { original: payload, message: ('Successfully saved "' + payload.url + '" as: "' + payload.saveToFileName + '".') });
+					}
 				});
 			}
 		});
