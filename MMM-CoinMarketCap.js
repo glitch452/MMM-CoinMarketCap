@@ -14,30 +14,36 @@ Module.register('MMM-CoinMarketCap', {
 	defaults: {
 		//currencies: [ { id: 1 }, { id: 1027 }, { id: 1592 } ], // The currencies to display, in the order that they will be displayed
 		/*currencies: [ 1,
-			{ id: 1, logoColored: true, logoSize: 'small', significantDigits: 3 },
+			{ id: 1, logoColored: true, logoSize: 'small', significantDigits: 3, graphSize: 'small', },
 			{ name: 'taas', logoSize: 'small', logoColored: false, decimalPlaces: 4, percentChangeColored: false },
-			{ id: 1592, logoColored: true, significantDigits: 2, decimalPlaces: 2, },
-			{ name: 'eth', logoSize: 'large' },
+			{ id: 1592, logoColored: true, significantDigits: 2, decimalPlaces: 2, logoSize: 'small', fontSize: 'large', },
+			{ name: 'eth', logoSize: 'large', fontSize: 'large', graphSize: 'large', },
 			'ethereum', 'ABC',
 			5000, { name: 'ethnotereum' }, { id: 5000 }, { id: 'therf' }, { name: 56666 }, [1] ],*/
 		//currencies: [ 1, 1027 ],
-		currencies: [ 1, 'ethereum', 'ripple', 'tron', 'taas', 'eos', 'litecoin', 'iota', 'dash', 'monero', 'Bytecoin', 'icon', ],
+		//currencies: [ 1, 'ethereum', 'ripple', 'tron', 'taas', 'eos', 'litecoin', 'iota', 'dash', 'monero', 'Bytecoin', 'icon', ],
+		currencies: [ 1, 'ethereum', 'ripple', 'tron', 'taas', 'eos', 'litecoin' ],
 		updateInterval: 10, // Minutes, minimum 5
 		retryDelay: 5, // Seconds, minimum 0
 		//view: [ 'logo', 'price' ],
-		view: [ 'logo', 'symbol', 'name', 'price', 'priceUSD', 'change1h', 'change24h', 'change7d', 'graph' ], // The columns to display, in the order that they will be displayed
-		showColumnHeaders: [ 'symbol', 'price', 'priceUSD', 'logo', 'change1h', 'change24h', 'change7d', 'graph' ], // Enable / Disagle the column header text.  Set to an array to enable by name
-		columnHeaderText: { name: 'Currency', symbol: 'Currency', price: 'Price ({conversion})', priceUSD: 'Price (USD)', logo: '', change1h: 'Hour', 
-							change24h: 'Day', change7d: 'Week', graph: 'Trend ({range})' },
+		view: [ 'logo', 'symbol', 'price', 'changes', 'graph', 'priceWithChanges' ], // The columns to display, in the order that they will be displayed
+		showColumnHeaders: [ 'symbol', 'price', 'priceWithChanges', 'priceUSD', 'logo', 'change1h', 'change24h', 'change7d', 'graph', 'changes', ], // Enable / Disagle the column header text.  Set to an array to enable by name
+		columnHeaderText: { name: 'Currency', symbol: 'Currency', price: 'Price ({conversion})', priceWithChanges: 'Price ({conversion})', priceUSD: 'Price (USD)',
+						logo: '', change1h: 'Hour', change24h: 'Day', change7d: 'Week', graph: 'Trend ({range})', changes: 'Changes' },
 		logoSize: 'medium', // small, medium, large, 'x-large'
 		logoColored: false, // if true, use the original logo, if false, use filter to make a black and white version
 		percentChangeColored: true,
 		cacheLogos: false, // Whether to download the logos from coinmarketcap or just access them from the site directly
-		conversion: 'EUR',
+		conversion: 'CAD',
 		significantDigits: 0,
 		decimalPlaces: 0,
 		usePriceDigitGrouping: true, // Whether to use loacle specific separators for currency (1000 vs 1,000)
-		graphRange: 30,
+		graphRange: 7,
+		fontSize: 'small',
+		graphSize: 'medium',
+		showRowSeparator: true,
+		fontColor: '', //https://www.w3schools.com/cssref/css_colors_legal.asp
+		showCurrencyWithPrice: false,
 		
 	},
 
@@ -59,13 +65,15 @@ Module.register('MMM-CoinMarketCap', {
 		self.maxListingAttempts = 4; // How many times to try downloading the listing before giving up and displaying an error
 		self.apiTickerEndpoint = 'ticker/';
 		self.maxTickerAttempts = 2; // How many times to try updating a currency before giving up
-		self.allColumnTypes = [ 'name', 'symbol', 'price', 'priceUSD', 'logo', 'change1h', 'change24h', 'change7d', 'graph' ];
+		self.allColumnTypes = [ 'name', 'symbol', 'price', 'priceUSD', 'logo', 'change1h', 'change24h', 'change7d', 'graph', 'changes', 'priceWithChanges' ];
 		self.tableHeader = null;
 		self.LocalLogoFolder = 'modules/' + self.data.name + '/public/logos/';
 		self.LocalLogoFolderBW = 'modules/' + self.data.name + '/public/logos_bw/';
 		self.httpLogoFolder = '/' + self.data.name + '/logos/';
 		self.httpLogoFolderBW = '/' + self.data.name + '/logos_bw/';
 		self.validLogoSizes = [ 'small', 'medium', 'large', 'x-large' ];
+		self.validFontSizes = [ 'x-small', 'small', 'medium', 'large', 'x-large' ];
+		self.validGraphSizes = [ 'x-small', 'small', 'medium', 'large', 'x-large' ];
 		self.validGraphRangeValues = [ 1, 7, 30 ];
 		self.logoSizeToPX = { 'small': 16, 'medium': 32, 'large': 64, 'x-large': 128 };
 		self.validConversions = [ "AUD", "BRL", "CAD", "CHF", "CLP", "CNY", "CZK", "DKK", "EUR", "GBP", "HKD", "HUF", "IDR", "ILS", "INR", 
@@ -110,6 +118,11 @@ Module.register('MMM-CoinMarketCap', {
 		else { self.config.decimalPlaces = Math.round(self.config.decimalPlaces); }
 		if (!axis.isBoolean(self.config.usePriceDigitGrouping)) { self.config.usePriceDigitGrouping = self.defaults.usePriceDigitGrouping; }
 		if (!self.validGraphRangeValues.includes(self.config.graphRange)) { self.config.graphRange = self.defaults.graphRange; }
+		if (!self.validFontSizes.includes(self.config.fontSize)) { self.config.fontSize = self.defaults.fontSize; }
+		if (!self.validGraphSizes.includes(self.config.graphSize)) { self.config.graphSize = self.defaults.graphSize; }
+		if (!axis.isBoolean(self.config.showRowSeparator)) { self.config.showRowSeparator = self.defaults.showRowSeparator; }
+		if (!axis.isString(self.config.fontColor)) { self.config.fontColor = self.defaults.fontColor; }
+		if (!axis.isBoolean(self.config.showCurrencyWithPrice)) { self.config.showCurrencyWithPrice = self.defaults.showCurrencyWithPrice; }
 		
 		// Configure all the currencies as objects with the requested settings
 		for (i = 0; i < self.config.currencies.length; i++) {
@@ -129,15 +142,20 @@ Module.register('MMM-CoinMarketCap', {
 			if (!axis.isNumber(c.decimalPlaces) || c.decimalPlaces < 0) { c.decimalPlaces = self.defaults.decimalPlaces; }
 			else { c.decimalPlaces = Math.round(c.decimalPlaces); }
 			if (!axis.isBoolean(c.usePriceDigitGrouping)) { c.usePriceDigitGrouping = self.config.usePriceDigitGrouping; }
-			
+			if (!self.validFontSizes.includes(c.fontSize)) { c.fontSize = self.config.fontSize; }
+			if (!self.validGraphSizes.includes(c.graphSize)) { c.graphSize = self.config.graphSize; }
+			if (!axis.isString(c.fontColor) || c.fontColor.length < 1) { c.fontColor = self.config.fontColor; }
+			if (!axis.isBoolean(c.showCurrencyWithPrice)) { c.showCurrencyWithPrice = self.config.showCurrencyWithPrice; }
 		}
 		
 		self.config.columnHeaderText.price = self.replaceAll(self.config.columnHeaderText.price, '{conversion}', self.config.conversion);
+		self.config.columnHeaderText.priceWithChanges = self.replaceAll(self.config.columnHeaderText.priceWithChanges, '{conversion}', self.config.conversion);
 		var range = '1 week';
 		if (self.config.graphRange === 1) { range = '1 day'; } else if (self.config.graphRange === 30) { range = '1 month'; }
 		self.config.columnHeaderText.graph = self.replaceAll(self.config.columnHeaderText.graph, '{range}', range);
+		self.config.columnHeaderText.graph = self.replaceAll(self.config.columnHeaderText.graph, '{days}', self.config.graphRange);
 		
-		Log.log(self.data.name + ': self.config: ' + JSON.stringify(self.config));
+		//Log.log(self.data.name + ': self.config: ' + JSON.stringify(self.config));
 		self.getListings(1);
 	},
 	
@@ -209,7 +227,7 @@ Module.register('MMM-CoinMarketCap', {
 				self.scheduleUpdate();
 				self.getAllCurrencyDetails();
 				self.cacheLogos();
-				Log.log(self.data.name + ': self.config.currencies: ' + JSON.stringify(self.config.currencies));
+				//Log.log(self.data.name + ': self.config.currencies: ' + JSON.stringify(self.config.currencies));
 				//Log.log(self.data.name + ': self.currencyData: ' + JSON.stringify(self.currencyData));
 			} else if (payload.original.attemptNum < self.maxListingAttempts) {
 				Log.log(self.data.name + ': Listings retrieval FAILED! Retrying in 8 seconds.');
@@ -282,7 +300,7 @@ Module.register('MMM-CoinMarketCap', {
 	
 	// Override the default notificationReceived function
 	notificationReceived: function(notification, payload, sender) {
-		var self = this;
+		//var self = this;
 		if (sender) { // If the notification is coming from another module
 			
 		}
@@ -293,28 +311,33 @@ Module.register('MMM-CoinMarketCap', {
 		// Initialize some variables
 		var self = this;
 		var c, i, k;
-		var wrapper = document.createElement("div");
-		wrapper.classList.add("small");
+		var wrapper = document.createElement('div');
+		//wrapper.classList.add('small');
 		
 		if (!self.loaded) {
-			wrapper.classList.add("loading");
+			wrapper.classList.add('loading');
+			wrapper.classList.add('small');
 			wrapper.innerHTML += 'Loading ...';
 			return wrapper;
 		}
 		
 		if (!axis.isArray(self.listings)) {
+			wrapper.classList.add('loading');
+			wrapper.classList.add('small');
 			wrapper.innerHTML += 'Unable to get data from CoinMarketCap.com';
 			wrapper.innerHTML += '<br />Error: ' + self.listings;
 			return wrapper;
 		}
 		
 		if (!self.dataLoaded) {
-			wrapper.classList.add("loading");
+			wrapper.classList.add('loading');
+			wrapper.classList.add('small');
 			wrapper.innerHTML += 'Loading ...';
 			return wrapper;
 		}
 		
-		var table = document.createElement("table");
+		var table = document.createElement('table');
+		if (self.config.showRowSeparator) { table.classList.add('row-separator'); }
 		
 		if (self.tableHeader === null) { self.tableHeader = self.getTableHeader(); }
 		if (self.tableHeader !== null) { table.appendChild(self.tableHeader); }
@@ -322,7 +345,9 @@ Module.register('MMM-CoinMarketCap', {
 		for (k = 0; k < self.config.currencies.length; k++) {
 			c = self.config.currencies[k];
 			if (self.currencyData[c.id].loaded) {
-				var row = document.createElement("tr");
+				var row = document.createElement('tr');
+				if (c.fontColor.length > 0) { row.style.color = c.fontColor; }
+				row.classList.add(c.fontSize);
 				for (i = 0; i < self.config.view.length; i++) {
 					row.appendChild(self.getCell(self.config.view[i], c));
 				}
@@ -340,9 +365,12 @@ Module.register('MMM-CoinMarketCap', {
 		var self = this;
 		var output = null, i;
 		if (self.config.showColumnHeaders === true || (axis.isArray(self.config.showColumnHeaders) && self.config.showColumnHeaders.length > 0) ) {
-			output = document.createElement("tr");
+			output = document.createElement('tr');
+			output.classList.add(self.config.fontSize);
+			if (self.config.fontColor.length > 0) { output.style.color = self.config.fontColor; }
 			for (i = 0; i < self.config.view.length; i++) {
-				var cell = document.createElement("th");
+				var cell = document.createElement('th');
+				cell.classList.add('cell-' + self.config.view[i]);
 				if (self.config.showColumnHeaders === true || (axis.isArray(self.config.showColumnHeaders) && self.config.showColumnHeaders.includes(self.config.view[i])) ) {
 					cell.innerHTML = self.config.columnHeaderText[self.config.view[i]];
 				} else {
@@ -364,7 +392,7 @@ Module.register('MMM-CoinMarketCap', {
 		var self = this;
 		//Log.log(self.data.name + ': getCell(' + colType + ', ' + currency + ')');
 		var data = self.currencyData[currency.id].data;
-		var cell = document.createElement("td");
+		var cell = document.createElement('td');
 		switch (colType) {
 			case 'name': cell.classList.add('cell-' + colType); cell.innerHTML = data.name; break;
 			case 'symbol': cell.classList.add('cell-' + colType); cell.innerHTML = data.symbol; break;
@@ -372,81 +400,105 @@ Module.register('MMM-CoinMarketCap', {
 				cell.classList.add('cell-' + colType);
 				if (axis.isObject(data.quotes[self.config.conversion]) && !axis.isNull(data.quotes[self.config.conversion])) {
 					var price = self.conformNumber(data.quotes[self.config.conversion].price, currency.significantDigits, currency.decimalPlaces);
-					var formatLocaleOptions = { style: 'currency', currency: self.config.conversion, useGrouping: currency.usePriceDigitGrouping };
-					if (currency.decimalPlaces !== 0) { formatLocaleOptions.minimumFractionDigits = formatLocaleOptions.maximumFractionDigits = currency.decimalPlaces; }
-					price = Number(price).toLocaleString(config.language, formatLocaleOptions);
+					var priceOptions = { style: 'currency', currency: self.config.conversion, useGrouping: currency.usePriceDigitGrouping };
+					if (currency.decimalPlaces !== 0) { priceOptions.minimumFractionDigits = priceOptions.maximumFractionDigits = currency.decimalPlaces; }
+					price = Number(price).toLocaleString(config.language, priceOptions);
 					var regex = /[A-Z]+(.+)/;
 					var matches = regex.exec(price);
 					cell.innerHTML = matches === null ? price : matches[1];
+					if (currency.showCurrencyWithPrice) { cell.innerHTML += ' ' + self.config.conversion; }
 				} else {
 					cell.innerHTML = 'N/A';	
 				}
 				break;
 			case 'priceUSD':
 				cell.classList.add('cell-' + colType);
-				var price = self.conformNumber(data.quotes.USD.price, currency.significantDigits, currency.decimalPlaces);
-				var formatLocaleOptions = { style: 'currency', currency: 'USD', useGrouping: currency.usePriceDigitGrouping };
-				if (currency.decimalPlaces !== 0) { formatLocaleOptions.minimumFractionDigits = formatLocaleOptions.maximumFractionDigits = currency.decimalPlaces; }
-				cell.innerHTML = Number(price).toLocaleString(config.language, formatLocaleOptions);
+				var priceUSD = self.conformNumber(data.quotes.USD.price, currency.significantDigits, currency.decimalPlaces);
+				var priceOptionsUSD = { style: 'currency', currency: 'USD', useGrouping: currency.usePriceDigitGrouping };
+				if (currency.decimalPlaces !== 0) { priceOptionsUSD.minimumFractionDigits = priceOptionsUSD.maximumFractionDigits = currency.decimalPlaces; }
+				cell.innerHTML = Number(priceUSD).toLocaleString(config.language, priceOptionsUSD);
+				if (currency.showCurrencyWithPrice) { cell.innerHTML += ' USD'; }
 				break;
 			case 'change1h':
 				cell.classList.add('cell-' + colType);
-				if (currency.percentChangeColored && data.quotes.USD.percent_change_1h > 0) { cell.classList.add("positive"); }
-				if (currency.percentChangeColored && data.quotes.USD.percent_change_1h < 0) { cell.classList.add("negative"); }
+				if (currency.percentChangeColored && data.quotes.USD.percent_change_1h > 0) { cell.classList.add('positive'); }
+				if (currency.percentChangeColored && data.quotes.USD.percent_change_1h < 0) { cell.classList.add('negative'); }
 				cell.innerHTML = Number(data.quotes.USD.percent_change_1h / 100).toLocaleString(config.language,
 								{ style: 'percent', currency: self.config.conversion, maximumFractionDigits: 2 });
 				break;
 			case 'change24h':
 				cell.classList.add('cell-' + colType);
-				if (currency.percentChangeColored && data.quotes.USD.percent_change_24h > 0) { cell.classList.add("positive"); }
-				if (currency.percentChangeColored && data.quotes.USD.percent_change_24h < 0) { cell.classList.add("negative"); }
+				if (currency.percentChangeColored && data.quotes.USD.percent_change_24h > 0) { cell.classList.add('positive'); }
+				if (currency.percentChangeColored && data.quotes.USD.percent_change_24h < 0) { cell.classList.add('negative'); }
 				cell.innerHTML = Number(data.quotes.USD.percent_change_24h / 100).toLocaleString(config.language,
 								{ style: 'percent', currency: self.config.conversion, maximumFractionDigits: 2 });
 				break;
 			case 'change7d':
 				cell.classList.add('cell-' + colType);
-				if (currency.percentChangeColored && data.quotes.USD.percent_change_7d > 0) { cell.classList.add("positive"); }
-				if (currency.percentChangeColored && data.quotes.USD.percent_change_7d < 0) { cell.classList.add("negative"); }
+				if (currency.percentChangeColored && data.quotes.USD.percent_change_7d > 0) { cell.classList.add('positive'); }
+				if (currency.percentChangeColored && data.quotes.USD.percent_change_7d < 0) { cell.classList.add('negative'); }
 				cell.innerHTML = Number(data.quotes.USD.percent_change_7d / 100).toLocaleString(config.language,
 								{ style: 'percent', currency: self.config.conversion, maximumFractionDigits: 2 });
 				break;
+			case 'changes':
+				cell.classList.add('cell-' + colType);
+				var hour = document.createElement('div');
+				var day = document.createElement('div');
+				var week = document.createElement('div');
+				var h = self.getCell('change1h', currency);
+				var d = self.getCell('change24h', currency);
+				var w = self.getCell('change7d', currency);
+				hour.innerHTML = 'H: ' + h.innerHTML;
+				day.innerHTML = 'D: ' + d.innerHTML;
+				week.innerHTML = 'W: ' + w.innerHTML;
+				hour.setAttribute('class', h.getAttribute('class'));
+				day.setAttribute('class', d.getAttribute('class'));
+				week.setAttribute('class', w.getAttribute('class'));
+				cell.appendChild(hour);
+				cell.appendChild(day);
+				cell.appendChild(week);
+				break;
+			case 'priceWithChanges':
+				cell.classList.add('cell-' + colType);
+				var pricePart = document.createElement('div');
+				pricePart.classList.add('pricePart');
+				pricePart.innerHTML = self.getCell('price', currency).innerHTML;
+				var changesPart = document.createElement('div');
+				changesPart.classList.add('changesPart');
+				changesPart.innerHTML = self.getCell('changes', currency).innerHTML;
+				cell.appendChild(pricePart);
+				cell.appendChild(changesPart);
+				break;
 			case 'logo':
 				cell.classList.add('cell-' + colType);
+				cell.classList.add('logo-' + currency.logoSize);
 				var LocalLogoFileName = self.httpLogoFolder + data.symbol.toLowerCase() + '-' + currency.logoSizePX + '.png';
 				var LocalLogoFileNameBW = self.httpLogoFolderBW + data.symbol.toLowerCase() + '-' + currency.logoSizePX + '.png';
 				var LocalLogoExists = self.fileExists(LocalLogoFileName);
 				var logoFileName = self.getLogoURL(currency.logoSizePX, data.id);
-				var filterImageForBW = false;
-				if (currency.logoColored) {
-					if (LocalLogoExists) { logoFileName = LocalLogoFileName; }
-				} else {
-					if (self.fileExists(LocalLogoFileNameBW)) {
-						logoFileName = LocalLogoFileNameBW;
-					} else if(LocalLogoExists) {
-						logoFileName = LocalLogoFileName;
-						filterImageForBW = true;
-					} else {
-						filterImageForBW = true;
+				var logo = new Image();
+				if (currency.logoColored && LocalLogoExists) { logoFileName = LocalLogoFileName; }
+				else if (!currency.logoColored) {
+					if (self.fileExists(LocalLogoFileNameBW)) { logoFileName = LocalLogoFileNameBW; }
+					else {
+						logo.classList.add('image-bw');
+						if (LocalLogoExists) { logoFileName = LocalLogoFileName; }
 					}
 				}
-				var logo = new Image();
 				logo.src = logoFileName;
-				logo.classList.add('logo-' + currency.logoSize);
-				if (filterImageForBW) { logo.classList.add('image-bw'); }
 				cell.appendChild(logo);
 				break;
 			case 'graph':
 				cell.classList.add('cell-' + colType);
+				cell.classList.add('graph-' + currency.graphSize);
 				var graph = new Image();
-				graph.src = 'https://s2.coinmarketcap.com/generated/sparklines/web/' + self.config.graphRange + 'd/usd/' + data.id + '.png';
+				graph.src = 'https://s2.coinmarketcap.com/generated/sparklines/web/' + self.config.graphRange + 'd/usd/' + data.id + '.png?noCache=' + Math.random();
 				cell.appendChild(graph);
 				break;
 			default: cell.innerHTML = ' ';
 		}
 		return cell;
 	},
-	
-	//price.toLocaleString(config.language, { style: 'currency', currency: this.config.conversion, maximumSignificantDigits: significantDigits })
 	
 	/**
 	 * Format a number to have a specified amount of significant digits and/or a fixes amount of decimal places
