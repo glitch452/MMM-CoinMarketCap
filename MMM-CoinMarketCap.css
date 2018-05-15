@@ -51,13 +51,18 @@
 	text-align: left;
 	vertical-align: middle;
 }
-.MMM-CoinMarketCap table th {
+.MMM-CoinMarketCap table.tallHeader th {
 	padding-bottom: 12px;
 }
 
 .MMM-CoinMarketCap table.row-separator td, .MMM-CoinMarketCap table.row-separator th {
 	border-bottom: solid 1px #222;
 }
+
+.MMM-CoinMarketCap table.fullSize { width: 100%; }
+.MMM-CoinMarketCap table.minimalSize { width: auto; }
+.right	.MMM-CoinMarketCap table.minimalSize { margin-left: auto; }
+.center	.MMM-CoinMarketCap table.minimalSize { margin-left: auto; margin-right: auto; }
 
 /**
  * Table cells by type

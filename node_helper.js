@@ -7,15 +7,24 @@
  */
  
 var NodeHelper = require('node_helper');
+var express = require("express");
+//var app = require("express")();
 var request = require('request');
 var fs = require('fs');
 
 module.exports = NodeHelper.create({
 	
+	requiresVersion: '2.1.0',
+	
 	start: function () {
 		var self = this;
-		self.name = 'MMM-CoinMarketCap';
-		console.log(self.name + ': module loaded!');
+		console.log(self.name + ': module loaded! Path: ' + this.path);
+		try {
+			self.expressApp.use("/" + self.name + '/logos', express.static(self.path + "/logos"));
+			console.log(self.name + ': Path "/logos" configured successfully.');
+		} catch (err) {
+			console.log(self.name + ': Error configuring additional routes: ' + err);
+		}
 	},
 	
 	socketNotificationReceived: function(notification, payload) {
@@ -29,8 +38,6 @@ module.exports = NodeHelper.create({
 		} else if (notification === 'DOWNLOAD_FILE') {
 			self.downloadFile(payload);
 		} else if (notification === 'INIT') {
-			//self.sendSocketNotification('LOG', { id: payload.id, message: ('__dirname: ' + __dirname) } ); // /home/pi/MagicMirror/modules/MMM-CoinMarketCap			
-			//self.sendSocketNotification('LOG', { id: payload.id, message: ('process.cwd(): ' + process.cwd()) } ); // home/pi/MagicMirror
 			self.sendSocketNotification('LOG', { original: payload, message: ('INIT received from: ' + payload.modID + '.'), messageType: 'dev' } );
 			self.sendSocketNotification('LOG', { original: payload, message: ('node_helper.js loaded successfully.'), messageType: 'dev' } );
 		}

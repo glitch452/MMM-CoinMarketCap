@@ -12,44 +12,101 @@ var axis, Log, config;
 Module.register('MMM-CoinMarketCap', {
 	
 	defaults: {
-		//currencies: [ { id: 1 }, { id: 1027 }, { id: 1592 } ], // The currencies to display, in the order that they will be displayed
-		/*currencies: [ 1,
-			{ id: 1, logoColored: true, logoSize: 'small', significantDigits: 3, graphSize: 'small', },
-			{ name: 'taas', logoSize: 'small', logoColored: false, decimalPlaces: 4, percentChangeColored: false },
-			{ id: 1592, logoColored: true, significantDigits: 2, decimalPlaces: 2, logoSize: 'small', fontSize: 'large', },
-			{ name: 'eth', logoSize: 'large', fontSize: 'large', graphSize: 'large', },
-			'ethereum', 'ABC',
-			5000, { name: 'ethnotereum' }, { id: 5000 }, { id: 'therf' }, { name: 56666 }, [1] ],*/
-		//currencies: [ 1, 1027 ],
-		//currencies: [ 1, 'ethereum', 'ripple', 'tron', 'taas', 'eos', 'litecoin', 'iota', 'dash', 'monero', 'Bytecoin', 'icon', ],
-		currencies: [ 1, 'ethereum', 'ripple', 'tron', 'taas', 'eos', 'litecoin' ],
+		currencies: [ 1, 1027 ], // The currencies to display, in the order that they will be displayed
 		updateInterval: 10, // Minutes, minimum 5
 		retryDelay: 5, // Seconds, minimum 0
-		//view: [ 'logo', 'price' ],
-		view: [ 'logo', 'symbol', 'price', 'changes', 'graph', 'priceWithChanges' ], // The columns to display, in the order that they will be displayed
-		showColumnHeaders: [ 'symbol', 'price', 'priceWithChanges', 'priceUSD', 'logo', 'change1h', 'change24h', 'change7d', 'graph', 'changes', ], // Enable / Disagle the column header text.  Set to an array to enable by name
-		columnHeaderText: { name: 'Currency', symbol: 'Currency', price: 'Price ({conversion})', priceWithChanges: 'Price ({conversion})', priceUSD: 'Price (USD)',
-						logo: '', change1h: 'Hour', change24h: 'Day', change7d: 'Week', graph: 'Trend ({range})', changes: 'Changes' },
+		columns: [ 'name', 'price', 'change1h', 'change24h', 'change7d' ], // The columns to display, in the order that they will be displayed
+		showColumnHeaders: true, // Enable / Disable the column header text.  Set to an array to enable by name
+		columnHeaderText: {
+			name: 'Currency',
+			symbol: 'Currency',
+			price: 'Price ({conversion})',
+			priceWithChanges: 'Price ({conversion})',
+			priceUSD: 'Price (USD)',
+			logo: '',
+			change1h: 'Hour',
+			change24h: 'Day',
+			change7d: 'Week',
+			graph: 'Trend ({range})',
+			changes: 'Changes'
+		},
 		logoSize: 'medium', // small, medium, large, 'x-large'
 		logoColored: false, // if true, use the original logo, if false, use filter to make a black and white version
-		percentChangeColored: true,
-		cacheLogos: false, // Whether to download the logos from coinmarketcap or just access them from the site directly
-		conversion: 'EUR',
-		significantDigits: 0,
-		decimalPlaces: 0,
+		percentChangeColored: false,
+		cacheLogos: true, // Whether to download the logos from coinmarketcap or just access them from the site directly
+		conversion: 'USD',
+		significantDigits: 0, // How many significant digits to round to in the price display
+		decimalPlaces: 2, // How many decimal places to show
 		usePriceDigitGrouping: true, // Whether to use loacle specific separators for currency (1000 vs 1,000)
-		graphRange: 7,
+		graphRange: 7, // How many days for the graph data.  Options: 1, 7, 30
 		fontSize: 'small',
 		graphSize: 'medium',
 		showRowSeparator: true,
 		fontColor: '', //https://www.w3schools.com/cssref/css_colors_legal.asp
 		showCurrencyWithPrice: false,
+		fullWidthMode: true, // If true, the module will fill the space of the region when other modules in the region are wider
+		tallHeader: null,
 		developerMode: false,
-		
 	},
 
 	requiresVersion: '2.1.0', // Required version of MagicMirror
+	
+	/* setConfig(config)
+	 * Set the module config and combine it with the module defaults.
+	 *
+	 * argument config obejct - Module config.
+	 */
+	setConfig: function (config) {
+		var self = this;
+		
+		if (typeof config.view === 'string') {
+			switch (config.view) {
+				case 'detailed': self.defaults.columns = [ 'name', 'price', 'change1h', 'change24h', 'change7d' ]; break;
+				case 'detailedSymbol': self.defaults.columns = [ 'symbol', 'price', 'change1h', 'change24h', 'change7d' ]; break;
+				case 'detailedWithUSD': self.defaults.columns = [ 'name', 'price', 'priceUSD', 'change1h', 'change24h', 'change7d' ]; break;
+				case 'graph':
+					self.defaults.columns = [ 'logo', 'price', 'graph' ];
+					self.defaults.showColumnHeaders = false;
+					self.defaults.percentChangeColored = true;
+					self.defaults.fullWidthMode = false;
+					self.defaults.fontSize = 'medium';
+					break;
+				case 'graphColored':
+					self.defaults.columns = [ 'logo', 'price', 'graph' ];
+					self.defaults.showColumnHeaders = false;
+					self.defaults.percentChangeColored = true;
+					self.defaults.fullWidthMode = false;
+					self.defaults.logoColored = true;
+					self.defaults.fontSize = 'medium';
+					break;
+				case 'graphWithChanges':
+					self.defaults.columns = [ 'logo', 'priceWithChanges', 'graph' ];
+					self.defaults.showColumnHeaders = false;
+					self.defaults.percentChangeColored = true;
+					self.defaults.showCurrencyWithPrice = true;
+					self.defaults.fullWidthMode = false;
+					break;
+				case 'logo':
+					self.defaults.columns = [ 'logo', 'price' ];
+					self.defaults.showColumnHeaders = false;
+					self.defaults.showCurrencyWithPrice = true;
+					self.defaults.fontSize = 'medium';
+					self.defaults.fullWidthMode = false;
+					break;
+				case 'logoColored':
+					self.defaults.columns = [ 'logo', 'price' ];
+					self.defaults.showColumnHeaders = false;
+					self.defaults.showCurrencyWithPrice = true;
+					self.defaults.fontSize = 'medium';
+					self.defaults.logoColored = true;
+					self.defaults.fullWidthMode = false;
+					break;
+			}
+		}
 
+		self.config = Object.assign({}, self.defaults, config);
+	},
+	
 	start: function() {
 		var self = this;
 		var i, c;
@@ -58,6 +115,8 @@ Module.register('MMM-CoinMarketCap', {
 		self.loaded = false;
 		self.dataLoaded = false;
 		self.listings = null;
+		self.updateTimer = null;
+		self.lastUpdateTime = null;
 		self.currencyData = {};
 		self.logosBaseURL = 'https://s2.coinmarketcap.com/static/img/coins/';
 		self.logosURLTemplate = self.logosBaseURL + '{size}x{size}/{id}.png';
@@ -68,19 +127,20 @@ Module.register('MMM-CoinMarketCap', {
 		self.apiTickerEndpoint = 'ticker/';
 		self.maxTickerAttempts = 2; // How many times to try updating a currency before giving up
 		self.allColumnTypes = [ 'name', 'symbol', 'price', 'priceUSD', 'logo', 'change1h', 'change24h', 'change7d', 'graph', 'changes', 'priceWithChanges' ];
+		self.tallColumns = [ 'graph', 'changes', 'priceWithChanges' ];
 		self.tableHeader = null;
-		self.LocalLogoFolder = self.path + '/public/logos/';
-		self.LocalLogoFolderBW = self.path + '/public/logos_bw/';
+		self.LocalLogoFolder = self.path + '/logos/';
+		self.LocalLogoFolderBW = self.path + '/logos/bw/';
 		self.httpLogoFolder = '/' + self.name + '/logos/';
-		self.httpLogoFolderBW = '/' + self.name + '/logos_bw/';
+		self.httpLogoFolderBW = '/' + self.name + '/logos/bw/';
 		self.validLogoSizes = [ 'small', 'medium', 'large', 'x-large' ];
 		self.validFontSizes = [ 'x-small', 'small', 'medium', 'large', 'x-large' ];
 		self.validGraphSizes = [ 'x-small', 'small', 'medium', 'large', 'x-large' ];
 		self.validGraphRangeValues = [ 1, 7, 30 ];
 		self.logoSizeToPX = { 'small': 16, 'medium': 32, 'large': 64, 'x-large': 128 };
 		self.validConversions = [ "AUD", "BRL", "CAD", "CHF", "CLP", "CNY", "CZK", "DKK", "EUR", "GBP", "HKD", "HUF", "IDR", "ILS", "INR", 
-								"JPY", "KRW", "MXN", "MYR", "NOK", "NZD", "PHP", "PKR", "PLN", "RUB", "SEK", "SGD", "THB", "TRY", "TWD", 
-								"ZAR", "BTC", "ETH", "XRP", "LTC", "BCH" ];
+								"JPY", "KRW", "MXN", "MYR", "NOK", "NZD", "PHP", "PKR", "PLN", "RUB", "SEK", "SGD", "THB", "TRY", "TWD", "ZAR",
+								"BTC", "ETH", "XRP", "LTC", "BCH" ]; // Valid cryptocurrency values
 		
 		// Process and validate configuration options
 		if (!axis.isArray(self.config.currencies)) { self.config.currencies = self.defaults.currencies; }
@@ -101,7 +161,7 @@ Module.register('MMM-CoinMarketCap', {
 		else { self.config.retryDelay = self.defaults.retryDelay * 1000; }
 		if (axis.isNumber(self.config.updateInterval) && self.config.updateInterval >= 5) { self.config.updateInterval = self.config.updateInterval * 60* 1000; }
 		else { self.config.updateInterval = self.defaults.updateInterval * 60 * 1000; }
-		if (!axis.isArray(self.config.view)) { self.config.view = self.defaults.view; }
+		if (!axis.isArray(self.config.columns)) { self.config.view = self.defaults.columns; }
 		if (axis.isArray(self.config.showColumnHeaders)) { // filter out items from config.showColumnHeaders that are not in allColumnTypes
 			self.config.showColumnHeaders = self.config.showColumnHeaders.filter(function(val) { return this.includes(val); }, self.allColumnTypes);
 		}
@@ -126,6 +186,8 @@ Module.register('MMM-CoinMarketCap', {
 		if (!axis.isString(self.config.fontColor)) { self.config.fontColor = self.defaults.fontColor; }
 		if (!axis.isBoolean(self.config.showCurrencyWithPrice)) { self.config.showCurrencyWithPrice = self.defaults.showCurrencyWithPrice; }
 		if (!axis.isBoolean(self.config.developerMode)) { self.config.developerMode = self.defaults.developerMode; }
+		if (!axis.isBoolean(self.config.fullWidthMode)) { self.config.fullWidthMode = self.defaults.fullWidthMode; }
+		if (!axis.isBoolean(self.config.tallHeader)) { self.config.tallHeader = self.config.columns.some(function(val) { return this.includes(val); }, self.tallColumns); }
 		
 		// Configure all the currencies as objects with the requested settings
 		for (i = 0; i < self.config.currencies.length; i++) {
@@ -158,15 +220,30 @@ Module.register('MMM-CoinMarketCap', {
 		self.config.columnHeaderText.graph = self.replaceAll(self.config.columnHeaderText.graph, '{range}', range);
 		self.config.columnHeaderText.graph = self.replaceAll(self.config.columnHeaderText.graph, '{days}', self.config.graphRange);
 		
-		self.log(('self.config: ' + JSON.stringify(self.config)), 'dev');
-		self.log(('self.data: ' + JSON.stringify(self.data)), 'dev');
+		self.log(('start(): self.config: ' + JSON.stringify(self.config)), 'dev');
+		self.log(('start(): self.data: ' + JSON.stringify(self.data)), 'dev');
 		self.getListings(1);
 	},
 	
+	suspend: function() {
+        var self = this;
+		self.log('Suspended.');
+		clearInterval(self.updateTimer);
+    },
+	
+	resume: function() {
+        var self = this;
+		self.log('Resumed.');
+		self.scheduleUpdate();
+		var date = new Date();
+		var threashold = new Date( self.lastUpdateTime.getTime() + self.config.updateInterval );
+		if (date >= threashold) { self.getAllCurrencyDetails(); }
+    },
+	
 	scheduleUpdate: function() {
         var self = this;
+        self.updateTimer = setInterval(function() { self.getAllCurrencyDetails(); }, self.config.updateInterval);
 		self.log('Update scheduled to run automatically every ' + (self.config.updateInterval / (1000 * 60)) + ' minutes.');
-        setInterval(function() { self.getAllCurrencyDetails(); }, self.config.updateInterval);
     },
 	
 	getListings: function(attemptNum) {
@@ -186,6 +263,7 @@ Module.register('MMM-CoinMarketCap', {
 	getAllCurrencyDetails: function() {
 		var self = this;
 		self.log('Update triggered.');
+		self.lastUpdateTime = new Date();
 		for (var key in self.currencyData) {
 			if (!self.currencyData.hasOwnProperty(key)) { continue; }
 			self.getSingleCurrencyDetails(key, 1);
@@ -194,7 +272,7 @@ Module.register('MMM-CoinMarketCap', {
 	
 	cacheLogos: function() {
 		var self = this;
-		if (!self.config.cacheLogos) { return; }
+		if (!self.config.cacheLogos || !self.config.columns.includes('logo')) { return; }
 		for (var key in self.currencyData) {
 			if (!self.currencyData.hasOwnProperty(key)) { continue; }
 			var symbol = self.currencyData[key].symbol.toLowerCase();
@@ -315,7 +393,6 @@ Module.register('MMM-CoinMarketCap', {
 	
 	// Override the default notificationReceived function
 	notificationReceived: function(notification, payload, sender) {
-		//var self = this;
 		if (sender) { // If the notification is coming from another module
 			
 		}
@@ -353,6 +430,9 @@ Module.register('MMM-CoinMarketCap', {
 		
 		var table = document.createElement('table');
 		if (self.config.showRowSeparator) { table.classList.add('row-separator'); }
+		if (self.config.fullWidthMode) { table.classList.add('fullSize'); }
+		else { table.classList.add('minimalSize'); }
+		if (self.config.tallHeader) { table.classList.add('tallHeader'); }
 		
 		if (self.tableHeader === null) { self.tableHeader = self.getTableHeader(); }
 		if (self.tableHeader !== null) { table.appendChild(self.tableHeader); }
@@ -363,8 +443,8 @@ Module.register('MMM-CoinMarketCap', {
 				var row = document.createElement('tr');
 				if (c.fontColor.length > 0) { row.style.color = c.fontColor; }
 				row.classList.add(c.fontSize);
-				for (i = 0; i < self.config.view.length; i++) {
-					row.appendChild(self.getCell(self.config.view[i], c));
+				for (i = 0; i < self.config.columns.length; i++) {
+					row.appendChild(self.getCell(self.config.columns[i], c));
 				}
 				table.appendChild(row);
 			}
@@ -383,11 +463,11 @@ Module.register('MMM-CoinMarketCap', {
 			output = document.createElement('tr');
 			output.classList.add(self.config.fontSize);
 			if (self.config.fontColor.length > 0) { output.style.color = self.config.fontColor; }
-			for (i = 0; i < self.config.view.length; i++) {
+			for (i = 0; i < self.config.columns.length; i++) {
 				var cell = document.createElement('th');
-				cell.classList.add('cell-' + self.config.view[i]);
-				if (self.config.showColumnHeaders === true || (axis.isArray(self.config.showColumnHeaders) && self.config.showColumnHeaders.includes(self.config.view[i])) ) {
-					cell.innerHTML = self.config.columnHeaderText[self.config.view[i]];
+				cell.classList.add('cell-' + self.config.columns[i]);
+				if (self.config.showColumnHeaders === true || (axis.isArray(self.config.showColumnHeaders) && self.config.showColumnHeaders.includes(self.config.columns[i])) ) {
+					cell.innerHTML = self.config.columnHeaderText[self.config.columns[i]];
 				} else {
 					cell.innerHTML = ' ';
 				}
@@ -415,7 +495,7 @@ Module.register('MMM-CoinMarketCap', {
 				if (axis.isObject(data.quotes[self.config.conversion]) && !axis.isNull(data.quotes[self.config.conversion])) {
 					var price = self.conformNumber(data.quotes[self.config.conversion].price, currency.significantDigits, currency.decimalPlaces);
 					var priceOptions = { style: 'currency', currency: self.config.conversion, useGrouping: currency.usePriceDigitGrouping };
-					if (currency.decimalPlaces !== 0) { priceOptions.minimumFractionDigits = priceOptions.maximumFractionDigits = currency.decimalPlaces; }
+					priceOptions.minimumFractionDigits = priceOptions.maximumFractionDigits = currency.decimalPlaces; 
 					price = Number(price).toLocaleString(config.language, priceOptions);
 					var regex = /[A-Z]+(.+)/;
 					var matches = regex.exec(price);
@@ -429,7 +509,7 @@ Module.register('MMM-CoinMarketCap', {
 				cell.classList.add('cell-' + colType);
 				var priceUSD = self.conformNumber(data.quotes.USD.price, currency.significantDigits, currency.decimalPlaces);
 				var priceOptionsUSD = { style: 'currency', currency: 'USD', useGrouping: currency.usePriceDigitGrouping };
-				if (currency.decimalPlaces !== 0) { priceOptionsUSD.minimumFractionDigits = priceOptionsUSD.maximumFractionDigits = currency.decimalPlaces; }
+				priceOptionsUSD.minimumFractionDigits = priceOptionsUSD.maximumFractionDigits = currency.decimalPlaces;
 				cell.innerHTML = Number(priceUSD).toLocaleString(config.language, priceOptionsUSD);
 				if (currency.showCurrencyWithPrice) { cell.innerHTML += ' USD'; }
 				break;
@@ -517,14 +597,14 @@ Module.register('MMM-CoinMarketCap', {
 	/**
 	 * Format a number to have a specified amount of significant digits and/or a fixes amount of decimal places
 	 * @param number the number to format
-	 * @param significantDigits the number of digits to consider before rounding the number
-	 * @param decimalPlaces the number of decimal places the formatted number should display (includes 0's)
+	 * @param significantDigits the number of digits to consider before rounding the number (minimum value: 1)
+	 * @param decimalPlaces the number of decimal places the formatted number should display (includes 0's) (minimum value: 0)
 	 * @return (string) the formatted number
 	 */
 	conformNumber: function(number, significantDigits, decimalPlaces) {
 		var self = this;
 		if (!axis.isNumber(significantDigits) || significantDigits < 0) { significantDigits = 0; }
-		if (!axis.isNumber(decimalPlaces) || decimalPlaces < 0) { decimalPlaces = 0; }
+		if (!axis.isNumber(decimalPlaces) || decimalPlaces < -1) { decimalPlaces = -1; }
 		significantDigits = Math.round(significantDigits);
 		decimalPlaces = Math.round(decimalPlaces);
 		var result;
@@ -532,11 +612,11 @@ Module.register('MMM-CoinMarketCap', {
 		number = Math.abs(number);
 		
 		if (significantDigits === 0) {
-			if (decimalPlaces === 0) { result = number; }
+			if (decimalPlaces === -1) { result = number; }
 			else { result = self.roundNumber(number, decimalPlaces).toFixed(decimalPlaces); }
 		} else {
 			var integerPartSize = Math.floor(number) === 0 ? 0 : Math.floor(number).toString().length;
-			if (decimalPlaces === 0) {
+			if (decimalPlaces === -1) {
 				if (integerPartSize === 0) { // Handle the special case: 0 < number < 1
 					var parts = number.toExponential(significantDigits).split('e');
         			result = Number(self.roundNumber(parts[0], significantDigits - 1) + 'e' + parts[1]);
@@ -609,7 +689,7 @@ Module.register('MMM-CoinMarketCap', {
 		if (self.config.developerMode) {
 			var date = new Date();
 			var time = date.getHours() + ':' + date.getMinutes() + ':' + date.getSeconds();
-			message = self.name + ': (' + time + ') ' + message;
+			message = self.name + ': (' + self.data.index + ')(' + time + ') ' + message;
 		} else { message = self.name + ': ' + message; }
 		switch (type) {
 			case 'error': Log.error(message); break;
