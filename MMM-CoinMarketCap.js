@@ -8,9 +8,14 @@
  * MIT Licensed.
  */
 
-var axis, Log, config;
+/**
+ * Register the module with the MagicMirror program
+ */
 Module.register('MMM-CoinMarketCap', {
 	
+	/**
+	 * The default configuration options
+	 */
 	defaults: {
 		currencies: [ 1, 1027 ], // The currencies to display, in the order that they will be displayed
 		updateInterval: 10, // Minutes, minimum 5
@@ -18,18 +23,6 @@ Module.register('MMM-CoinMarketCap', {
 		columns: [ 'name', 'price', 'change1h', 'change24h', 'change7d' ], // The columns to display, in the order that they will be displayed
 		showColumnHeaders: true, // Enable / Disable the column header text.  Set to an array to enable by name
 		columnHeaderText: {},
-		/*	name: 'Currency',
-			symbol: 'Currency',
-			price: 'Price ({conversion})',
-			priceWithChanges: 'Price ({conversion})',
-			priceUSD: 'Price (USD)',
-			logo: '',
-			change1h: 'Hour',
-			change24h: 'Day',
-			change7d: 'Week',
-			graph: 'Trend ({range})',
-			changes: 'Changes',
-		},*/
 		logoSize: 'medium', // small, medium, large, 'x-large'
 		logoColored: false, // if true, use the original logo, if false, use filter to make a black and white version
 		percentChangeColored: false,
@@ -37,7 +30,7 @@ Module.register('MMM-CoinMarketCap', {
 		conversion: 'USD',
 		significantDigits: 0, // How many significant digits to round to in the price display
 		decimalPlaces: 2, // How many decimal places to show
-		usePriceDigitGrouping: true, // Whether to use loacle specific separators for currency (1000 vs 1,000)
+		usePriceDigitGrouping: true, // Whether to use locale specific separators for currency (1000 vs 1,000)
 		graphRange: 7, // How many days for the graph data.  Options: 1, 7, 30
 		fontSize: 'small',
 		graphSize: 'medium',
@@ -48,13 +41,17 @@ Module.register('MMM-CoinMarketCap', {
 		tallHeader: null,
 		developerMode: false,
 	},
-
-	requiresVersion: '2.1.0', // Required version of MagicMirror
 	
-	/* setConfig(config)
-	 * Set the module config and combine it with the module defaults.
-	 *
-	 * argument config obejct - Module config.
+	/**
+	 * The minimum version of magic mirror that is required for this module to run. 
+	 */
+	requiresVersion: '2.1.0',
+	
+	/**
+	 * Override the setConfig function to change some of the default configuration options (based on the user's view option) 
+	 * before they are merged with the user configuration options 
+	 * 
+	 * @param config (object) The user specified configuration options
 	 */
 	setConfig: function (config) {
 		var self = this;
@@ -107,6 +104,10 @@ Module.register('MMM-CoinMarketCap', {
 		self.config = Object.assign({}, self.defaults, config);
 	},
 	
+	/**
+	 * Override the start function.  Set some instance variables and validate the selected 
+	 * configuration options before loading the rest of the module.  
+	 */
 	start: function() {
 		var self = this;
 		var i, c;
@@ -118,8 +119,9 @@ Module.register('MMM-CoinMarketCap', {
 		self.updateTimer = null;
 		self.lastUpdateTime = null;
 		self.currencyData = {};
-		self.logosBaseURL = 'https://s2.coinmarketcap.com/static/img/coins/';
-		self.logosURLTemplate = self.logosBaseURL + '{size}x{size}/{id}.png';
+		self.assetsBaseURL = 'https://s2.coinmarketcap.com/';
+		self.logosURLTemplate = self.assetsBaseURL + 'static/img/coins/{size}x{size}/{id}.png';
+		self.graphURLTemplate = self.assetsBaseURL + 'generated/sparklines/web/{range}d/usd/{id}.png?noCache={noCache}';
 		self.apiBaseURL = 'https://api.coinmarketcap.com/';
 		self.apiVersion = 'v2/';
 		self.apiListingsEndpoint = 'listings/';
@@ -143,7 +145,6 @@ Module.register('MMM-CoinMarketCap', {
 								"BTC", "ETH", "XRP", "LTC", "BCH" ]; // Valid cryptocurrency values
 		
 		// Process and validate configuration options
-		
 		self.defaults.columnHeaderText = {
 			name: self.translate('CURRENCY_TITLE'),
 			symbol: self.translate('CURRENCY_TITLE'),
@@ -227,10 +228,11 @@ Module.register('MMM-CoinMarketCap', {
 			if (!axis.isBoolean(c.showCurrencyWithPrice)) { c.showCurrencyWithPrice = self.config.showCurrencyWithPrice; }
 		}
 		
+		// Replace variables in the column header text
 		self.config.columnHeaderText.price = self.replaceAll(self.config.columnHeaderText.price, '{conversion}', self.config.conversion);
 		self.config.columnHeaderText.priceWithChanges = self.replaceAll(self.config.columnHeaderText.priceWithChanges, '{conversion}', self.config.conversion);
-		var range = '1 week';
-		if (self.config.graphRange === 1) { range = '1 day'; } else if (self.config.graphRange === 30) { range = '1 month'; }
+		var range = self.translate('ONE_WEEK');
+		if (self.config.graphRange === 1) { range = self.translate('ONE_DAY'); } else if (self.config.graphRange === 30) { range = self.translate('ONE_MONTH'); }
 		self.config.columnHeaderText.graph = self.replaceAll(self.config.columnHeaderText.graph, '{range}', range);
 		self.config.columnHeaderText.graph = self.replaceAll(self.config.columnHeaderText.graph, '{days}', self.config.graphRange);
 		
@@ -239,27 +241,44 @@ Module.register('MMM-CoinMarketCap', {
 		self.getListings(1);
 	},
 	
+	/**
+	 * Override the suspend function that is called when the module instance is hidden.  
+	 * This method stops the update timer.
+	 */
 	suspend: function() {
         var self = this;
 		self.log(self.translate('SUSPENDED') + '.');
 		clearInterval(self.updateTimer);
     },
 	
+	/**
+	 * Override the resume function that is called when the module instance is un-hidden.  
+	 * This method re-starts the update timer and calls for an update if the update interval
+	 * has been passed since the module was suspended. 
+	 */
 	resume: function() {
         var self = this;
 		self.log(self.translate('RESUMED') + '.');
 		self.scheduleUpdate();
 		var date = new Date();
-		var threashold = new Date( self.lastUpdateTime.getTime() + self.config.updateInterval );
-		if (date >= threashold) { self.getAllCurrencyDetails(); }
+		var threshold = new Date( self.lastUpdateTime.getTime() + self.config.updateInterval );
+		if (date >= threshold) { self.getAllCurrencyDetails(); }
     },
 	
+	/**
+	 * The scheduleUpdate function starts the auto update timer.  
+	 */
 	scheduleUpdate: function() {
         var self = this;
         self.updateTimer = setInterval(function() { self.getAllCurrencyDetails(); }, self.config.updateInterval);
 		self.log( self.translate('UPDATE_SCHEDULED', { 'minutes': (self.config.updateInterval / (1000 * 60)) }) );
     },
 	
+	/**
+	 * The getListings function sends a request to the node helper to download the list of available currencies.  
+	 * 
+	 * @param attemptNum (number) The number of attempts to download the listings
+	 */
 	getListings: function(attemptNum) {
 		var self = this;
 		self.log(self.translate('LISTINGS_REQUESTED'));
@@ -267,6 +286,12 @@ Module.register('MMM-CoinMarketCap', {
 		self.sendSocketNotification('GET_LISTINGS', { modID: self.modID, url: url, attemptNum: attemptNum, notification: 'LISTINGS_RECEIVED' } );
 	},
 	
+	/**
+	 * The getListings function sends a request to the node helper to download the data for the requested currency.  
+	 * 
+	 * @param id (number) The id number of the currency to be downloaded
+	 * @param attemptNum (number) The number of attempts to download the listings
+	 */
 	getSingleCurrencyDetails: function(id, attemptNum) {
 		var self = this;
 		self.log(self.translate('CURRENCY_UPDATE_REQUESTED', { 'name': self.currencyData[id].name, 'id': id }));
@@ -274,6 +299,10 @@ Module.register('MMM-CoinMarketCap', {
 		self.sendSocketNotification('GET_CURRENCY_DETAILS', { modID: self.modID, url: url, id: id, attemptNum: attemptNum, notification: 'CURRENCY_DETAILS_RECEIVED' } );
 	},
 	
+	/**
+	 * The getAllCurrencyDetails function loops through the list of currencies and initiates requests to
+	 * download the latest information for each currency. 
+	 */
 	getAllCurrencyDetails: function() {
 		var self = this;
 		self.log(self.translate('UPDATE_STARTED'));
@@ -284,6 +313,9 @@ Module.register('MMM-CoinMarketCap', {
 		}
 	},
 	
+	/**
+	 * The cacheLogos function sends a download request to the node helper for the logos of the configured currencies.  
+	 */
 	cacheLogos: function() {
 		var self = this;
 		if (!self.config.cacheLogos || !self.config.columns.includes('logo')) { return; }
@@ -308,10 +340,16 @@ Module.register('MMM-CoinMarketCap', {
 		}
 	},
 	
-	// socketNotificationReceived from node_helper
+	/**
+	 * Override the socketNotificationReceived function to handle the notifications sent from the node helper
+	 * 
+	 * @param notification (string) The type of notification sent
+	 * @param payload (any) The data sent with the notification
+	 */
 	socketNotificationReceived: function(notification, payload) {
 		var self = this;
 		
+		// If there is no module ID sent with the notification
 		if (!axis.isString(payload.original.modID)) {
 			if (notification === 'LOG') {
 				if (payload.translate) { self.log(self.translate(payload.message, payload.translateVars)); }
@@ -319,7 +357,8 @@ Module.register('MMM-CoinMarketCap', {
 			}
 			return;
 		}
-		// Filter our notifications for other instances
+		
+		// Filter out notifications for other instances
 		if (payload.original.modID !== self.modID) {
 			self.log(('Notification ignored for ID "' + payload.original.modID + '".'), 'dev');
 			return;
@@ -328,7 +367,7 @@ Module.register('MMM-CoinMarketCap', {
 		if (notification === 'LOG') {
 			if (payload.translate) { self.log(self.translate(payload.message, payload.translateVars)); }
 			else { self.log(payload.message); }
-		} else if (notification === 'LISTINGS_RECEIVED' && !self.loaded) {//payload.isSuccessful = false;
+		} else if (notification === 'LISTINGS_RECEIVED' && !self.loaded) {
 			if (payload.isSuccessful && payload.data.metadata.error === null) {
 				self.log(self.translate('LISTINGS_SUCCESS', { 'numberOfAttempts': payload.original.attemptNum }));
 				self.listings = payload.data.data;
@@ -339,7 +378,6 @@ Module.register('MMM-CoinMarketCap', {
 				self.getAllCurrencyDetails();
 				self.cacheLogos();
 				self.log(('self.config.currencies: ' + JSON.stringify(self.config.currencies)), 'dev');
-				//self.log(('self.currencyData: ' + JSON.stringify(self.currencyData)), 'dev');
 			} else if (payload.original.attemptNum < self.maxListingAttempts) {
 				self.log(self.translate('LISTINGS_FAILURE', { 'retryTimeInSeconds': 8 }));
 				setTimeout(function() { self.getListings(Number(payload.original.attemptNum) + 1); }, 8000);
@@ -349,11 +387,11 @@ Module.register('MMM-CoinMarketCap', {
 				self.loaded = true;
 				self.updateDom(0);
 			}
-		} else if (notification === 'CURRENCY_DETAILS_RECEIVED') {//payload.isSuccessful = false;
+		} else if (notification === 'CURRENCY_DETAILS_RECEIVED') {
 			if (payload.isSuccessful && payload.data.metadata.error === null) {
 				self.log(self.translate('CURRENCY_UPDATE_SUCCESS',
 					{ 'name': self.currencyData[payload.original.id].name, 'id': payload.original.id, 'numberOfAttempts': payload.original.attemptNum }));
-				self.updateCurrency(payload.data.data);
+				self.updateCurrencyData(payload.data.data);
 				self.updateDom(0);
 			} else if (payload.original.attemptNum < self.maxTickerAttempts) {
 				self.log(self.translate('CURRENCY_UPDATE_FAILURE',
@@ -369,6 +407,11 @@ Module.register('MMM-CoinMarketCap', {
 		}
 	},
 	
+	/**
+	 * The filterCurrenciesAndSetupDataSet function compares the requested currency list with the downloaded listings.  
+	 * It filters out requested currencies that are not on the listing and setups up an entry in the currencyData
+	 * object for all the valid currencies.  
+	 */
 	filterCurrenciesAndSetupDataSet: function() {
 		var self = this;
 		var i, c, listing;
@@ -390,6 +433,14 @@ Module.register('MMM-CoinMarketCap', {
 		self.config.currencies = temp;
 	},
 	
+	/**
+	 * The selectListing function is a helper function for filterCurrenciesAndSetupDataSet.  
+	 * It searches the listing by id and name to determine whether a currency exists.  
+	 * 
+	 * @param id (number) The id of the currency to search for
+	 * @param name (string) The symbol, name or slug of the currency to search for
+	 * @return (boolean) returns true if the currency was found in the list, false otherwise
+	 */
 	selectListing: function(id, name) {
 		var self = this;
 		if (!axis.isNumber(id)) { id = null; }
@@ -403,20 +454,37 @@ Module.register('MMM-CoinMarketCap', {
 		}, { id: id, name: name });
 	},
 	
-	updateCurrency: function(data) {
+	/**
+	 * The updateCurrencyData function sets the data parameter of the currencyData item with the given data set.  
+	 * This function is called when new data is received from the API request.  
+	 * It also sets variables to track whether data has been received.  
+	 * 
+	 * @param data (object) The data object received from the API
+	 */
+	updateCurrencyData: function(data) {
 		var self = this;
 		if (!self.currencyData[data.id].loaded) { self.currencyData[data.id].loaded = true; }
 		if (!self.dataLoaded) { self.dataLoaded = true; }
 		self.currencyData[data.id].data = data;
 	},
 	
-	// Override the default notificationReceived function
+	/**
+	 * Override the notificationReceived function.  
+	 * For now, there are no actions based on system or module notifications.  
+	 * 
+	 * @param notification (string) The type of notification sent
+	 * @param payload (any) The data sent with the notification
+	 * @param sender (object) The module that the notification originated from
+	 */
 	notificationReceived: function(notification, payload, sender) {
 		if (sender) { // If the notification is coming from another module
 			
 		}
 	},
 	
+	/**
+	 * Override the getDom function to generate the DOM objects to be displayed for this module instance
+	 */
 	getDom: function() {
 		
 		// Initialize some variables
@@ -435,7 +503,7 @@ Module.register('MMM-CoinMarketCap', {
 		if (!axis.isArray(self.listings)) {
 			wrapper.classList.add('loading');
 			wrapper.classList.add('small');
-			wrapper.innerHTML += self.translate('API_ERROR', { 'website': 'CoinMarketCap.com' } ); // Unable to get data from {website};
+			wrapper.innerHTML += self.translate('API_ERROR', { 'website': 'CoinMarketCap.com' } );
 			if (self.config.developerMode) { wrapper.innerHTML += '<br />Error: ' + self.listings; }
 			return wrapper;
 		}
@@ -475,6 +543,11 @@ Module.register('MMM-CoinMarketCap', {
 		
 	},
 	
+	/**
+	 * The getTableHeader function generates the header row of the main display table
+	 * 
+	 * @return (object) The DOM object containing the table header row
+	 */
 	getTableHeader: function() {
 		var self = this;
 		var output = null, i;
@@ -497,10 +570,11 @@ Module.register('MMM-CoinMarketCap', {
 	},
 	
 	/**
-	 * Generates the content for each content cell given the currency and column type
-	 * @param colType the type of column to genereate
-	 * @param currency a currency object from the self.config.currencies list
-	 * @return a dom object containing the cell content
+	 * The getCell function generates the content for each table cell given the currency (row) and column type
+	 * 
+	 * @param (string) colType the type of column to generate
+	 * @param (object) currency a currency object from the self.config.currencies list
+	 * @return (object) a DOM object containing the cell content
 	 */
 	getCell: function(colType, currency) {
 		var self = this;
@@ -605,7 +679,11 @@ Module.register('MMM-CoinMarketCap', {
 				cell.classList.add('cell-' + colType);
 				cell.classList.add('graph-' + currency.graphSize);
 				var graph = new Image();
-				graph.src = 'https://s2.coinmarketcap.com/generated/sparklines/web/' + self.config.graphRange + 'd/usd/' + data.id + '.png?noCache=' + Math.random();
+				var graphURL = self.graphURLTemplate;
+				graphURL = self.replaceAll(graphURL, '{id}', data.id.toString());
+				graphURL = self.replaceAll(graphURL, '{range}', self.config.graphRange.toString());
+				graphURL = self.replaceAll(graphURL, '{noCache}', Math.random().toString());
+				graph.src = graphURL;
 				cell.appendChild(graph);
 				break;
 			default: cell.innerHTML = ' ';
@@ -614,16 +692,17 @@ Module.register('MMM-CoinMarketCap', {
 	},
 	
 	/**
-	 * Format a number to have a specified amount of significant digits and/or a fixes amount of decimal places
-	 * @param number the number to format
-	 * @param significantDigits the number of digits to consider before rounding the number (minimum value: 1)
-	 * @param decimalPlaces the number of decimal places the formatted number should display (includes 0's) (minimum value: 0)
+	 * The conformNumber function formats a number to have a specified number of significant digits and/or a fixes the amount of decimal places
+	 * 
+	 * @param number (number) The number to format
+	 * @param significantDigits (number) The number of digits to consider before rounding the number (minimum value: 1)
+	 * @param decimalPlaces (number) The number of decimal places the formatted number should display (includes 0's) (minimum value: 0)
 	 * @return (string) the formatted number
 	 */
 	conformNumber: function(number, significantDigits, decimalPlaces) {
 		var self = this;
-		if (!axis.isNumber(significantDigits) || significantDigits < 0) { significantDigits = 0; }
-		if (!axis.isNumber(decimalPlaces) || decimalPlaces < -1) { decimalPlaces = -1; }
+		if (!axis.isNumber(significantDigits) || significantDigits < 1) { significantDigits = 0; }
+		if (!axis.isNumber(decimalPlaces) || decimalPlaces < 0) { decimalPlaces = -1; }
 		significantDigits = Math.round(significantDigits);
 		decimalPlaces = Math.round(decimalPlaces);
 		var result;
@@ -649,11 +728,27 @@ Module.register('MMM-CoinMarketCap', {
 		return isNegative ? '-' + result : result.toString();
     },
 	
+	/**
+	 * The roundNumber function rounds a number to the specified number of decimal places.  
+	 * Use a negative precision value to round to a position left of the decimal.  
+	 * This function overcomes the floating-point rounding issues and rounds away from 0.  
+	 * 
+	 * @param number (number) The number to round
+	 * @param precision (number) The position to round to before or after the decimal
+	 * @return (number) The rounded number
+	 */
 	roundNumber: function(number, precision) {
         if (precision >= 0) { return Number(Math.round(number + 'e' + precision) + 'e-' + precision); }
     	else { return Number(Math.round(number + 'e-' + Math.abs(precision)) + 'e' + Math.abs(precision)); }
     },
 	
+	/**
+	 * The getLogoURL function gets the URL for a specified logo on the coin market cap website.
+	 * 
+	 * @param size (number) The size of the logo
+	 * @param id (number) The ID if the currency
+	 * @return (string) The URL of the logo
+	 */
 	getLogoURL: function(size, id) {
 		var self = this;
 		if (axis.isString(size)) { size = self.logoSizeToPX[size]; }
@@ -663,6 +758,12 @@ Module.register('MMM-CoinMarketCap', {
 		return output;
 	},
 	
+	/**
+	 * The fileExists function tests if a file exists using a web URL
+	 * 
+	 * @param fileName (string) The URL of the file
+	 * @return (boolean) Returns true if the file exists, false otherwise
+	 */
 	fileExists: function(fileName) {
 		var request = new XMLHttpRequest();
 		request.open('HEAD', fileName, false);
@@ -670,6 +771,14 @@ Module.register('MMM-CoinMarketCap', {
 		return Number(request.status) !== 404;
 	},
 	
+	/**
+	 * The replaceAll function replaces all occurrences of a string within the given string. 
+	 * 
+	 * @param str (string) The string to search within
+	 * @param find (string) The string to find within str
+	 * @param replace (string) The string to use as a replacement for the find string
+	 * @return (string) A copy of str with all the find occurrences replaced with replace
+	 */
 	replaceAll: function(str, find, replace) {
 		var output = '';
 		var idx = str.indexOf(find);
@@ -682,27 +791,44 @@ Module.register('MMM-CoinMarketCap', {
 		return output;
 	},
 	
-	// Load Scripts
+	
+	/**
+	 * Override the getScripts function to load additional scripts used by this module. 
+	 */
 	getScripts: function() {
 		var scripts = [];
 		if (typeof axis !== 'function') { scripts.push(this.file('scripts/axis.js')); }
 		return scripts;
 	},
 	
-	// Load Style Sheets
+	
+	/**
+	 * Override the getStyles function to load CSS files used by this module. 
+	 */
 	getStyles: function () {
 		return [
 			"MMM-CoinMarketCap.css",
 		];
 	},
 
-	// Load translations files
+	
+	/**
+	 * Override the getTranslations function to load translation files specific to this module. 
+	 */
 	getTranslations: function() {
 		return {
 			en: "translations/en.json",
 		};
 	},
 	
+	/**
+	 * The log function is a convenience alias that sends a message to the console.  
+	 * This is an alias for the MagicMirror Log functions with a developer mode feature added.  
+	 * This function prepends the module name to the message.  
+	 * 
+	 * @param message (string) The message to be sent to the console
+	 * @param type (string) The type of message (dev, error, info, log)
+	 */
 	log: function(message, type) {
 		var self = this;
 		if (self.config.developerMode) {

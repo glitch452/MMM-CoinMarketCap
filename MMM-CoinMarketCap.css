@@ -65,7 +65,7 @@
 .center	.MMM-CoinMarketCap table.minimalSize { margin-left: auto; margin-right: auto; }
 
 /**
- * Table cells by type
+ * Table cells by type and their content
  */
 .MMM-CoinMarketCap .cell-change1h, .MMM-CoinMarketCap .cell-change24h, .MMM-CoinMarketCap .cell-change7d, .MMM-CoinMarketCap .cell-changes,
 .MMM-CoinMarketCap .cell-price, .MMM-CoinMarketCap .cell-priceUSD, .MMM-CoinMarketCap .cell-priceWithChanges {
