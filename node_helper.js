@@ -22,7 +22,7 @@ module.exports = NodeHelper.create({
 	/**
 	 * The minimum version of magic mirror that is required for this module to run. 
 	 */
-	requiresVersion: '2.1.0',
+	requiresVersion: '2.2.1',
 	
 	/**
 	 * Override the start function to run when the module is started up.  

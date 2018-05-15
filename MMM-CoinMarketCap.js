@@ -18,26 +18,27 @@ Module.register('MMM-CoinMarketCap', {
 	 */
 	defaults: {
 		currencies: [ 1, 1027 ], // The currencies to display, in the order that they will be displayed
-		updateInterval: 10, // Minutes, minimum 5
-		retryDelay: 10, // Seconds, minimum 0
 		columns: [ 'name', 'price', 'change1h', 'change24h', 'change7d' ], // The columns to display, in the order that they will be displayed
+		conversion: 'USD',
 		showColumnHeaders: true, // Enable / Disable the column header text.  Set to an array to enable by name
 		columnHeaderText: {},
-		logoSize: 'medium', // small, medium, large, 'x-large'
-		logoColored: false, // if true, use the original logo, if false, use filter to make a black and white version
+		showRowSeparator: true,
+		fullWidthMode: true, // If true, the module will fill the space of the region when other modules in the region are wider
+		fontSize: 'small',
+		fontColor: '', // https://www.w3schools.com/cssref/css_colors_legal.asp
 		percentChangeColored: false,
-		cacheLogos: true, // Whether to download the logos from coinmarketcap or just access them from the site directly
-		conversion: 'USD',
 		significantDigits: 0, // How many significant digits to round to in the price display
 		decimalPlaces: 2, // How many decimal places to show
 		usePriceDigitGrouping: true, // Whether to use locale specific separators for currency (1000 vs 1,000)
-		graphRange: 7, // How many days for the graph data.  Options: 1, 7, 30
-		fontSize: 'small',
-		graphSize: 'medium',
-		showRowSeparator: true,
-		fontColor: '', //https://www.w3schools.com/cssref/css_colors_legal.asp
 		showCurrencyWithPrice: false,
-		fullWidthMode: true, // If true, the module will fill the space of the region when other modules in the region are wider
+		logoSize: 'medium', // small, medium, large, 'x-large'
+		logoColored: false, // if true, use the original logo, if false, use filter to make a black and white version
+		cacheLogos: true, // Whether to download the logos from coinmarketcap or just access them from the site directly
+		graphRange: 7, // How many days for the graph data.  Options: 1, 7, 30
+		graphSize: 'medium', // The graph size to display.  Options: 'x-small', 'small', 'medium', 'large', 'x-large'
+		updateInterval: 10, // Minutes, minimum 5
+		retryDelay: 10, // Seconds, minimum 0
+		
 		tallHeader: null,
 		developerMode: false,
 	},
@@ -45,7 +46,7 @@ Module.register('MMM-CoinMarketCap', {
 	/**
 	 * The minimum version of magic mirror that is required for this module to run. 
 	 */
-	requiresVersion: '2.1.0',
+	requiresVersion: '2.2.1',
 	
 	/**
 	 * Override the setConfig function to change some of the default configuration options (based on the user's view option) 
@@ -58,7 +59,6 @@ Module.register('MMM-CoinMarketCap', {
 		
 		if (typeof config.view === 'string') {
 			switch (config.view) {
-				case 'detailed': self.defaults.columns = [ 'name', 'price', 'change1h', 'change24h', 'change7d' ]; break;
 				case 'detailedSymbol': self.defaults.columns = [ 'symbol', 'price', 'change1h', 'change24h', 'change7d' ]; break;
 				case 'detailedWithUSD': self.defaults.columns = [ 'name', 'price', 'priceUSD', 'change1h', 'change24h', 'change7d' ]; break;
 				case 'graph':
@@ -98,6 +98,8 @@ Module.register('MMM-CoinMarketCap', {
 					self.defaults.logoColored = true;
 					self.defaults.fullWidthMode = false;
 					break;
+				case 'detailed':
+				default: self.defaults.columns = [ 'name', 'price', 'change1h', 'change24h', 'change7d' ];
 			}
 		}
 
@@ -608,21 +610,21 @@ Module.register('MMM-CoinMarketCap', {
 				break;
 			case 'change1h':
 				cell.classList.add('cell-' + colType);
-				if (currency.percentChangeColored && data.quotes.USD.percent_change_1h > 0) { cell.classList.add('positive'); }
+				if (currency.percentChangeColored && data.quotes.USD.percent_change_1h >= 0) { cell.classList.add('positive'); }
 				if (currency.percentChangeColored && data.quotes.USD.percent_change_1h < 0) { cell.classList.add('negative'); }
 				cell.innerHTML = Number(data.quotes.USD.percent_change_1h / 100).toLocaleString(config.language,
 								{ style: 'percent', currency: self.config.conversion, maximumFractionDigits: 2 });
 				break;
 			case 'change24h':
 				cell.classList.add('cell-' + colType);
-				if (currency.percentChangeColored && data.quotes.USD.percent_change_24h > 0) { cell.classList.add('positive'); }
+				if (currency.percentChangeColored && data.quotes.USD.percent_change_24h >= 0) { cell.classList.add('positive'); }
 				if (currency.percentChangeColored && data.quotes.USD.percent_change_24h < 0) { cell.classList.add('negative'); }
 				cell.innerHTML = Number(data.quotes.USD.percent_change_24h / 100).toLocaleString(config.language,
 								{ style: 'percent', currency: self.config.conversion, maximumFractionDigits: 2 });
 				break;
 			case 'change7d':
 				cell.classList.add('cell-' + colType);
-				if (currency.percentChangeColored && data.quotes.USD.percent_change_7d > 0) { cell.classList.add('positive'); }
+				if (currency.percentChangeColored && data.quotes.USD.percent_change_7d >= 0) { cell.classList.add('positive'); }
 				if (currency.percentChangeColored && data.quotes.USD.percent_change_7d < 0) { cell.classList.add('negative'); }
 				cell.innerHTML = Number(data.quotes.USD.percent_change_7d / 100).toLocaleString(config.language,
 								{ style: 'percent', currency: self.config.conversion, maximumFractionDigits: 2 });
