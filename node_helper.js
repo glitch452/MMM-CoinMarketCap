@@ -25,7 +25,7 @@ module.exports = NodeHelper.create({
 		} catch (err) {
 			console.log(self.name + ': Error configuring additional routes: ' + err);
 		}
-	},
+	},//self.log(self.translate(payload.message, payload.translateVars));
 	
 	socketNotificationReceived: function(notification, payload) {
 		var self = this;
@@ -70,9 +70,9 @@ module.exports = NodeHelper.create({
 			if (result.isSuccessful) {
 				fs.writeFile(payload.saveToFileName, response.body, { encoding: 'binary' }, function(err){
 					if (err) {
-						self.sendSocketNotification('LOG', { original: payload, message: ('Failed to save "' + payload.url + '" as: "' + payload.saveToFileName + '".') });
+						self.sendSocketNotification('LOG', { original: payload, translate: true, message: 'LOGO_SAVE_FAILURE', translateVars: { sourceFilename: payload.url, destinationFilename: payload.saveToFileName } });
 					} else {
-						self.sendSocketNotification('LOG', { original: payload, message: ('Successfully saved "' + payload.url + '" as: "' + payload.saveToFileName + '".') });
+						self.sendSocketNotification('LOG', { original: payload, translate: true, message: 'LOGO_SAVE_SUCCESS', translateVars: { sourceFilename: payload.url, destinationFilename: payload.saveToFileName } });
 					}
 				});
 			}
