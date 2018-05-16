@@ -117,7 +117,7 @@ By default, this module will download the logo image files for the requested cur
 
 When using black and white logos in the module, the color logos are loaded and a CSS filter is applied to convert the image to grayscale and invert the colors. This looks great for most of the logos, but as you can imagine, some of them don't look as good as others. If you would prefer a better black and white logo for a particular currency, you can make your own image file and place it into the `logos\bw` folder within this module's folder. Note: the images from the `logos\bw` fill be displayed  as is with no filtering applied, so they need to be grayscale images.  
 
-The naming convention for the logos is as follows: `{symbol}-{size}.png`. `{symbol}` represents the currency's short name, usually 3 or 4 characters, which MUST be in lower case.  `{size}` represents the size of the image in pixels.  There are 4 sizes configured for this module: 16, 32, 64, and 128.  These image files should be 16x16px, 32x32px, 64x64px, and 128x128px respectively.
+The naming convention for the logos is as follows: `{symbol}-{size}.png`. `{symbol}` represents the currency's short name, usually 3 to 5 characters, which MUST be in lower case.  `{size}` represents the size of the image in pixels.  There are 4 sizes configured for this module: 16, 32, 64, and 128.  These image files should be 16x16px, 32x32px, 64x64px, and 128x128px respectively.
 
 ## Updates
 To update the module to the latest version, use your terminal to:
