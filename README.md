@@ -6,7 +6,7 @@ This module displays cryptocurrency information from the [Coin Market Cap](https
 
 | Status  | Version | Date       | Maintained? | Minimum MagicMirror² Version |
 |:------- |:------- |:---------- |:----------- |:---------------------------- |
-| Working | `1.0.0` | 2018-05-15 | Yes         |`2.2.1`                       |
+| Working | `1.0.1` | 2018-05-16 | Yes         |`2.2.1`                       |
 
 ### Example
 ![Example of MMM-CoinMarketCap](images/sample.png?raw=true "Example screenshot")
@@ -40,7 +40,11 @@ var config = {
             position: "top_left",
             header: "Cryptocurrencies",
             config: {
-                // See below for Configuration Options
+                currencies: ['bitcoin', 'ethereum', 'litecoin', 'ripple'],
+                view: 'graphWithChanges',
+                conversion: 'CAD',
+                ...
+                // See below for more Configuration Options
             }
         },
         ...
@@ -113,11 +117,11 @@ Here is an example of a custom view created using the following configuration op
 
 ### Custom Logo Images
 
-By default, this module will download the logo image files for the requested currencies. It will save them into the `logos` folder located in the module's folder.  Some logos for popular currencies have already been provided with this module. If you would like to use your own logo for a particular currency, simply replace `.png` file in the `logos` folder with your custom logo file. New logo files will only be downloaded if there is NOT already an existing logo in the `logos` folder.  
+By default, this module will download the logo image files for the requested currencies. It will save them into the `logos` folder located in the module's folder.  Some logos for popular currencies have already been provided with this module. If you would like to use your own logo for a particular currency, simply replace the `.png` file in the `logos` folder with your custom logo file. New logo files will only be downloaded if there is NOT already an existing file in the `logos` folder.  
 
-When using black and white logos in the module, the color logos are loaded and a CSS filter is applied to convert the image to grayscale and invert the colors. This looks great for most of the logos, but as you can imagine, some of them don't look as good as others. If you would prefer a better black and white logo for a particular currency, you can make your own image file and place it into the `logos\bw` folder within this module's folder. Note: the images from the `logos\bw` fill be displayed  as is with no filtering applied, so they need to be grayscale images.  
+When using black and white logo mode, this module actually loads the color logos and a CSS filter is applied to convert the image to grayscale. This looks great for most of the logos, but as you can imagine, there may be some that don't look as good as the rest. If you would prefer a better black and white logo for a particular currency, you can make your own image file and place it into the `logos\bw` folder. Note: the images from the `logos\bw` will be displayed as is, with no CSS filtering applied, so they need to be grayscale images.  
 
-The naming convention for the logos is as follows: `{symbol}-{size}.png`. `{symbol}` represents the currency's short name, usually 3 to 5 characters, which MUST be in lower case.  `{size}` represents the size of the image in pixels.  There are 4 sizes configured for this module: 16, 32, 64, and 128.  These image files should be 16x16px, 32x32px, 64x64px, and 128x128px respectively.
+The naming convention for the logos is as follows: `{symbol}-{size}.png`. `{symbol}` represents the currency's short name, usually 3 to 5 characters, which MUST be in lower case.  `{size}` represents the size of the image in pixels.  There are 4 sizes configured in this module: 16, 32, 64, and 128.  These image files should be 16x16px, 32x32px, 64x64px, and 128x128px respectively.
 
 ## Updates
 To update the module to the latest version, use your terminal to:

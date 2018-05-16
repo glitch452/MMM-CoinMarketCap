@@ -11,27 +11,11 @@
 /**
  * Font configurations
  */
-.MMM-CoinMarketCap .x-small {
-  font-size: 15px;
-  line-height: 20px;
-}
-.MMM-CoinMarketCap .small {
-  font-size: 20px;
-  line-height: 25px;
-}
-.MMM-CoinMarketCap .medium {
-  font-size: 30px;
-  line-height: 35px;
-}
-.MMM-CoinMarketCap .large {
-  font-size: 65px;
-  line-height: 65px;
-}
-.MMM-CoinMarketCap .x-large {
-  font-size: 75px;
-  line-height: 75px;
-  letter-spacing: -3px;
-}
+.MMM-CoinMarketCap .x-small	{ font-size: 15px; line-height: 20px; }
+.MMM-CoinMarketCap .small	{ font-size: 20px; line-height: 25px; }
+.MMM-CoinMarketCap .medium	{ font-size: 30px; line-height: 35px; }
+.MMM-CoinMarketCap .large	{ font-size: 65px; line-height: 65px; }
+.MMM-CoinMarketCap .x-large	{ font-size: 75px; line-height: 75px; letter-spacing: -3px; }
 
 .MMM-CoinMarketCap .negative { color: #FF5A44; }
 .MMM-CoinMarketCap .positive { color: #A3EA80; }
@@ -47,7 +31,7 @@
  * Main Table CSS
  */
 .MMM-CoinMarketCap table td, .MMM-CoinMarketCap table th {
-	padding: 4px 8px 4px 8px;
+	padding: 4px 7px 4px 7px;
 	text-align: left;
 	vertical-align: middle;
 }
@@ -62,7 +46,9 @@
 .MMM-CoinMarketCap table.fullSize { width: 100%; }
 .MMM-CoinMarketCap table.minimalSize { width: auto; }
 .right	.MMM-CoinMarketCap table.minimalSize { margin-left: auto; }
-.center	.MMM-CoinMarketCap table.minimalSize { margin-left: auto; margin-right: auto; }
+.center	.MMM-CoinMarketCap table.minimalSize,
+.third	.MMM-CoinMarketCap table.minimalSize,
+.bar	.MMM-CoinMarketCap table.minimalSize { margin-left: auto; margin-right: auto; }
 
 /**
  * Table cells by type and their content
@@ -81,9 +67,9 @@
 .MMM-CoinMarketCap td.cell-logo img {
 	vertical-align: middle;
 }
-.MMM-CoinMarketCap td.logo-small img 	{ height: 16px; 		width: 16px; }
+.MMM-CoinMarketCap td.logo-small img 	{ height: 16px;		width: 16px; }
 .MMM-CoinMarketCap td.logo-medium img 	{ height: 32px;		width: 32px; }
-.MMM-CoinMarketCap td.logo-large img 	{ height: 64px; 		width: 64px; }
+.MMM-CoinMarketCap td.logo-large img 	{ height: 64px;		width: 64px; }
 .MMM-CoinMarketCap td.logo-x-large img 	{ height: 128px; 	width: 128px; }
 .MMM-CoinMarketCap .image-bw {
 	filter: invert(100%) grayscale(100%);
@@ -117,3 +103,4 @@
 	display: inline;
 	padding-left: 8px;
 }
+.MMM-CoinMarketCap td.cell-priceWithChanges .changesPart div:first-child { padding-left: 0; }
