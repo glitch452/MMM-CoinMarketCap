@@ -133,8 +133,8 @@ Module.register('MMM-CoinMarketCap', {
 		self.allColumnTypes = [ 'name', 'symbol', 'price', 'priceUSD', 'logo', 'change1h', 'change24h', 'change7d', 'graph', 'changes', 'priceWithChanges' ];
 		self.tallColumns = [ 'graph', 'changes', 'priceWithChanges' ];
 		self.tableHeader = null;
-		self.LocalLogoFolder = self.path + '/logos/';
-		self.LocalLogoFolderBW = self.path + '/logos/bw/';
+		self.LocalLogoFolder = self.data.path + 'logos/';
+		self.LocalLogoFolderBW = self.data.path + 'logos/bw/';
 		self.httpLogoFolder = '/' + self.name + '/logos/';
 		self.httpLogoFolderBW = '/' + self.name + '/logos/bw/';
 		self.validLogoSizes = [ 'small', 'medium', 'large', 'x-large' ];
@@ -219,9 +219,9 @@ Module.register('MMM-CoinMarketCap', {
 			c.logoSizePX = self.logoSizeToPX[c.logoSize];
 			if (!axis.isBoolean(c.logoColored)) { c.logoColored = self.config.logoColored; }
 			if (!axis.isBoolean(c.percentChangeColored)) { c.percentChangeColored = self.config.percentChangeColored; }
-			if (!axis.isNumber(c.significantDigits) || c.significantDigits < 0) { c.significantDigits = self.defaults.significantDigits; }
+			if (!axis.isNumber(c.significantDigits) || c.significantDigits < 0) { c.significantDigits = self.config.significantDigits; }
 			else { c.significantDigits = Math.round(c.significantDigits); }
-			if (!axis.isNumber(c.decimalPlaces) || c.decimalPlaces < 0) { c.decimalPlaces = self.defaults.decimalPlaces; }
+			if (!axis.isNumber(c.decimalPlaces) || c.decimalPlaces < 0) { c.decimalPlaces = self.config.decimalPlaces; }
 			else { c.decimalPlaces = Math.round(c.decimalPlaces); }
 			if (!axis.isBoolean(c.usePriceDigitGrouping)) { c.usePriceDigitGrouping = self.config.usePriceDigitGrouping; }
 			if (!self.validFontSizes.includes(c.fontSize)) { c.fontSize = self.config.fontSize; }
@@ -724,7 +724,7 @@ Module.register('MMM-CoinMarketCap', {
 					result = self.roundNumber(number, significantDigits - integerPartSize);
 				}
 			} else {
-				result = self.conformNumber( self.conformNumber(number, significantDigits, 0), 0, decimalPlaces );
+				result = self.conformNumber( self.conformNumber(number, significantDigits, -1), 0, decimalPlaces );
 			}
 		}
 		return isNegative ? '-' + result : result.toString();
