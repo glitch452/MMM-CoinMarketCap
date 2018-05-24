@@ -10,7 +10,7 @@
  * Load resources required by this module.  
  */
 var NodeHelper = require('node_helper');
-var express = require("express");
+var express = require('express');
 var request = require('request');
 var fs = require('fs');
 
