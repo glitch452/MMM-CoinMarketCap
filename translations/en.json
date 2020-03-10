@@ -17,8 +17,8 @@
 	"REQUEST_LOGO_DOWNLOAD": "Requesting logo download: \"{filename}\".",
 	"LISTINGS_SUCCESS": "Listings retrieved successfully after {numberOfAttempts} attempt(s).",
 	"LISTINGS_FAILURE": "Listings retrieval FAILED! Retrying in {retryTimeInSeconds} seconds.",
-	"CURRENCY_UPDATE_SUCCESS": "Currency Update Received for {name} using ID: {id} after {numberOfAttempts} attempt(s).",
-	"CURRENCY_UPDATE_FAILURE": "Currency Update FAILED for {name} using ID: {id}. Retrying in {retryTimeInSeconds} seconds.",
+	"CURRENCY_UPDATE_SUCCESS": "Currency Update Received for IDs: {id} after {numberOfAttempts} attempt(s).",
+	"CURRENCY_UPDATE_FAILURE": "Currency Update FAILED IDs: {id}. Retrying in {retryTimeInSeconds} seconds.",
 	"LOGO_DOWNLOAD_SUCCESS": "Successfully download logo: \"{filename}\".",
 	"LOGO_DOWNLOAD_FAILURE": "Logo download failed for: \"{filename}\".",
 	"INVALID_CURRENCY": "Unable to find currency with id: \"{id}\" or name: \"{name}\".",
@@ -27,5 +27,6 @@
 	"SUSPENDED": "Suspended",
 	"RESUMED": "Resumed",
 	"LOGO_SAVE_FAILURE": "Failed to save \"{sourceFilename}\" as: \"{destinationFilename}\".",
-	"LOGO_SAVE_SUCCESS": "Successfully saved \"{sourceFilename}\" as: \"{destinationFilename}\"."
+	"LOGO_SAVE_SUCCESS": "Successfully saved \"{sourceFilename}\" as: \"{destinationFilename}\".",
+	"API_KEY_REQUIRED": "Please provide an API key."
 }

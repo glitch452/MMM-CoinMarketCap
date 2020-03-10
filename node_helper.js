@@ -10,7 +10,7 @@
  * Load resources required by this module.  
  */
 var NodeHelper = require('node_helper');
-var express = require("express");
+var express = require('express');
 var request = require('request');
 var fs = require('fs');
 
@@ -26,7 +26,7 @@ module.exports = NodeHelper.create({
 	
 	/**
 	 * Override the start function to run when the module is started up.  
-	 * Used to provice initialization information to the console and to map
+	 * Used to provide initialization information to the console and to map
 	 * additional routes.  
 	 */
 	start: function () {
@@ -48,7 +48,7 @@ module.exports = NodeHelper.create({
 	 */
 	socketNotificationReceived: function(notification, payload) {
 		var self = this;
-		console.log(self.name + ': Socket Notification Received: "' + notification + '".');
+		if (payload.developerMode) { console.log(self.name + ': Socket Notification Received: "' + notification + '".'); }
 		if (notification === 'GET_LISTINGS') {
 			self.getAndReturnJSON(payload);
 		} else if (notification === 'GET_CURRENCY_DETAILS') {
@@ -56,19 +56,26 @@ module.exports = NodeHelper.create({
 		} else if (notification === 'DOWNLOAD_FILE') {
 			self.downloadFile(payload);
 		} else if (notification === 'INIT') {
-			self.sendSocketNotification('LOG', { original: payload, message: ('INIT received from: ' + payload.modID + '.'), messageType: 'dev' } );
+			self.sendSocketNotification('LOG', { original: payload, message: ('INIT received from: ' + payload.instanceID + '.'), messageType: 'dev' } );
 			self.sendSocketNotification('LOG', { original: payload, message: ('node_helper.js loaded successfully.'), messageType: 'dev' } );
 		}
 	},
 	
 	/**
-	 * The getAndReturnJSON getAndReturnJSON gets a JSON document from a URL and send it to the client.  
+	 * The getAndReturnJSON function gets a JSON document from a URL and send it to the client.  
 	 * 
 	 * @param payload (object) Contains the data required for getting the JSON document
 	 */
 	getAndReturnJSON: function(payload) {
 		var self = this;
-		request({ url: payload.url, method: 'GET' }, function (error, response, body) {
+		var config = {
+			url: payload.url,
+			method: 'GET',
+		};
+		if ( payload.apiKey ) {
+			config.headers = { 'X-CMC_PRO_API_KEY': payload.apiKey };
+		}
+		request(config, function (error, response, body) {
 			var result;
 			if (!error && response.statusCode === 200) {
 				result = { original: payload, isSuccessful: true, response: response, data: JSON.parse(body) };

@@ -1,11 +1,7 @@
 /**
  * MMM-CoinMarketCap
  * 
- * 
  * MIT Licensed.
- * 
- * Custom here your css module
- * 
  */
  
 /**
@@ -45,10 +41,14 @@
 
 .MMM-CoinMarketCap table.fullSize { width: 100%; }
 .MMM-CoinMarketCap table.minimalSize { width: auto; }
-.right	.MMM-CoinMarketCap table.minimalSize { margin-left: auto; }
+
 .center	.MMM-CoinMarketCap table.minimalSize,
 .third	.MMM-CoinMarketCap table.minimalSize,
-.bar	.MMM-CoinMarketCap table.minimalSize { margin-left: auto; margin-right: auto; }
+.bar	.MMM-CoinMarketCap table.minimalSize,
+.fullscreen	.MMM-CoinMarketCap table.minimalSize { margin-left: auto; margin-right: auto; }
+
+.left	.MMM-CoinMarketCap table.minimalSize { margin-left: 0; margin-right: auto; }
+.right	.MMM-CoinMarketCap table.minimalSize { margin-left: auto; margin-right: 0; }
 
 /**
  * Table cells by type and their content

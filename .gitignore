@@ -1,7 +1,7 @@
 # Node
 node_modules
 
-## OS X
+# OS X
 .DS_Store
 .AppleDouble
 .LSOverride
@@ -9,8 +9,11 @@ node_modules
 .Spotlight-V100
 .Trashes
 
-## Windows
+# Windows
 Thumbs.db
 ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
+
+# Development
+_untracked
