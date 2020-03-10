@@ -833,6 +833,7 @@ Module.register("MMM-CoinMarketCap", {
 	getTranslations: function() {
 		return {
 			en: "translations/en.json",
+			it: "translations/it.json",
 		};
 	},
 
