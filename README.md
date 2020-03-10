@@ -6,7 +6,7 @@ This module displays cryptocurrency information from the [Coin Market Cap](https
 
 | Status  | Version | Date       | Maintained? | Minimum MagicMirror² Version |
 |:------- |:------- |:---------- |:----------- |:---------------------------- |
-| Working | `2.0.1` | 2020-03-10 | Yes         |`2.2.1`                       |
+| Working | `2.1.0` | 2020-03-10 | Yes         |`2.2.1`                       |
 
 ### Example
 ![Example of MMM-CoinMarketCap](images/sample.png?raw=true "Example screenshot")
