@@ -19,7 +19,7 @@ This module displays cryptocurrency information from the [Coin Market Cap](https
 
 ### Dependencies
 1. The [Coin Market Cap Pro API (v1)](https://coinmarketcap.com/api/): For the currency data
-    - A free API key is required, sign up at [Coin Market Cap Developers](https://pro.coinmarketcap.com/signup/) page
+    - A free API key is required, sign up on the [Coin Market Cap Developers](https://pro.coinmarketcap.com/signup/) page
 2. The Coin Market Cap website: For the graphs and downloading currency logos
 
 ## Installation
