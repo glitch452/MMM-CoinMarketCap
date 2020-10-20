@@ -80,8 +80,16 @@
 	font-size: 4px;
 }
 .MMM-CoinMarketCap td.cell-graph img {
-    filter: invert(100%) grayscale(100%) brightness(300%);
 	vertical-align: middle;
+}
+.MMM-CoinMarketCap td.cell-graph img.grey {
+	filter: invert(100%) grayscale(100%) brightness(250%);
+}
+.MMM-CoinMarketCap td.cell-graph img.down {
+	filter: hue-rotate(322deg) saturate(260%) brightness(0.62) contrast(170%);
+}
+.MMM-CoinMarketCap td.cell-graph img.up {
+	filter: hue-rotate(45deg) saturate(76%) brightness(0.80);
 }
 .MMM-CoinMarketCap td.graph-x-small	img { height: 24px; }
 .MMM-CoinMarketCap td.graph-small	img { height: 32px; }
