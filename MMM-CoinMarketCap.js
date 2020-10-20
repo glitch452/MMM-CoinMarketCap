@@ -37,6 +37,7 @@ Module.register("MMM-CoinMarketCap", {
 		cacheLogos: true, // Whether to download the logos from coinmarketcap or just access them from the site directly
 		graphRange: 7, // How many days for the graph data.  Options: 1, 7, 30
 		graphSize: "medium", // The graph size to display.  Options: "x-small", "small", "medium", "large", "x-large"
+		graphColored: false,
 		updateInterval: 10, // Minutes, minimum 5
 		retryDelay: 10, // Seconds, minimum 0
 
@@ -76,6 +77,7 @@ Module.register("MMM-CoinMarketCap", {
 					self.defaults.fullWidthMode = false;
 					self.defaults.logoColored = true;
 					self.defaults.fontSize = "medium";
+					self.defaults.graphColored = true;
 					break;
 				case "graphWithChanges":
 					self.defaults.columns = [ "logo", "priceWithChanges", "graph" ];
@@ -123,7 +125,7 @@ Module.register("MMM-CoinMarketCap", {
 		self.updateTimer = null;
 		self.lastUpdateTime = new Date(0);
 		self.currencyData = {};
-		self.assetsBaseURL = "https://s2.coinmarketcap.com/";
+		self.assetsBaseURL = "https://s3.coinmarketcap.com/";
 		self.logosURLTemplate = self.assetsBaseURL + "static/img/coins/{size}x{size}/{id}.png";
 		self.graphURLTemplate = self.assetsBaseURL + "generated/sparklines/web/{range}d/usd/{id}.png?noCache={noCache}";
 		self.apiBaseURL = "https://pro-api.coinmarketcap.com/";
@@ -199,6 +201,7 @@ Module.register("MMM-CoinMarketCap", {
 		if (!self.validGraphRangeValues.includes(self.config.graphRange)) { self.config.graphRange = self.defaults.graphRange; }
 		if (!self.validFontSizes.includes(self.config.fontSize)) { self.config.fontSize = self.defaults.fontSize; }
 		if (!self.validGraphSizes.includes(self.config.graphSize)) { self.config.graphSize = self.defaults.graphSize; }
+		if (!axis.isBoolean(self.config.graphColored)) { self.config.graphColored = self.defaults.graphColored; }
 		if (!axis.isBoolean(self.config.showRowSeparator)) { self.config.showRowSeparator = self.defaults.showRowSeparator; }
 		if (!axis.isString(self.config.fontColor)) { self.config.fontColor = self.defaults.fontColor; }
 		if (!axis.isBoolean(self.config.showCurrencyWithPrice)) { self.config.showCurrencyWithPrice = self.defaults.showCurrencyWithPrice; }
@@ -700,6 +703,13 @@ Module.register("MMM-CoinMarketCap", {
 				graphURL = self.replaceAll(graphURL, "{range}", self.config.graphRange.toString());
 				graphURL = self.replaceAll(graphURL, "{noCache}", Math.random().toString());
 				graph.src = graphURL;
+				if (self.config.graphColored && self.config.graphRange === 1) {
+					graph.classList.add(data.quote[conversion].percent_change_24h >= 0 ? 'up' : 'down');
+				} else if (self.config.graphColored && self.config.graphRange === 7) {
+					graph.classList.add(data.quote[conversion].percent_change_7d >= 0 ? 'up' : 'down');
+				} else {
+					graph.classList.add('grey');
+				}
 				cell.appendChild(graph);
 				break;
 			default: cell.innerHTML = " ";
