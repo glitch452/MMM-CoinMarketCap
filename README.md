@@ -6,7 +6,7 @@ This module displays cryptocurrency information from the [Coin Market Cap](https
 
 | Status  | Version | Date       | Maintained? | Minimum MagicMirror² Version |
 |:------- |:------- |:---------- |:----------- |:---------------------------- |
-| Working | `2.1.0` | 2020-03-10 | Yes         |`2.2.1`                       |
+| Working | `2.2.0` | 2020-10-19 | Yes         |`2.2.1`                       |
 
 ### Example
 ![Example of MMM-CoinMarketCap](images/sample.png?raw=true "Example screenshot")
@@ -53,7 +53,6 @@ var config = {
                 currencies: ['bitcoin', 'ethereum', 'litecoin', 'ripple'],
                 view: 'graphWithChanges',
                 conversion: 'CAD',
-                ...
                 // See below for more Configuration Options
             }
         },
@@ -87,6 +86,7 @@ var config = {
 | `cacheLogos`            | *Optional* - Whether or not to download the logo images. When true the images will be downloaded, when false, they will be referenced from Coin Market Cap. <br />**Type:** `boolean`<br />**Default:** `true`
 | `graphRange`            | *Optional* - The number of days to show for the `graph` column. <br />**Type:** `number`<br />**Default:** `7`<br />**Options:** `1`, `7`, `30`
 | `graphSize`             | *Optional* - The size of graph to display in the `graph` column. <br />**Type:** `string`<br />**Default:** `'medium'`<br />**Options:** `'x-small'`, `'small'`, `'medium'`, `'large'`, `'x-large'`
+| `graphColored`          | *Optional* - Whether or not to use colors for the sparkline graps. When true the 1 day and 7 day graphs will be green when the currency value has increased over the period, and red when it has decreased. If false or using 30 day graphs, the standard grey color will be used.  <br />**Type:** `boolean`<br />**Default:** `false`
 | `updateInterval`        | *Optional* - The number of minutes between data updates.  The minimum value is `5`. <br />**Type:** `number`<br />**Default:** `10`
 | `retryDelay`            | *Optional* - If a data update request fails, this is the number of seconds to wait before trying again. <br />**Type:** `number`<br />**Default:** `10`
 
@@ -131,7 +131,7 @@ By default, this module will download the logo image files for the requested cur
 
 When using black and white logo mode, this module actually loads the color logos and a CSS filter is applied to convert the image to grayscale. This looks great for most of the logos, but as you can imagine, there may be some that don't look as good as the rest. If you would prefer a better black and white logo for a particular currency, you can make your own image file and place it into the `logos\bw` folder. Note: the images from the `logos\bw` will be displayed as is, with no CSS filtering applied, so they need to be grayscale images.  
 
-The naming convention for the logos is as follows: `{symbol}-{size}.png`. `{symbol}` represents the currency's short name, usually 3 to 5 characters, which MUST be in lower case.  `{size}` represents the size of the image in pixels.  There are 4 sizes configured in this module: 16, 32, 64, and 128.  These image files should be 16x16px, 32x32px, 64x64px, and 128x128px respectively.
+The naming convention for the logos is as follows: `{symbol}-{size}.png`. `{symbol}` represents the currency's short name, usually 3 to 5 characters, which MUST be in lower case.  `{size}` represents the size of the image in pixels.  There are 4 sizes configured in this module: 16, 32, 64, and 128.  These image files should be 16x16px, 32x32px, 64x64px, and 128x128px respectively.  Example: `btc-16.png`
 
 ## Updates
 To update the module to the latest version, use your terminal to:
@@ -143,6 +143,19 @@ If you have changed the module on your own, the update will fail. <br />To force
 git reset --hard
 git pull
 ```
+
+## Manually Choose a Version
+
+To use an older version of this module, use your terminal to:
+1. Navigate to your MMM-CoinMarketCap folder. If you are using the default installation directory, use the command:<br />`cd ~/MagicMirror/modules/MMM-CoinMarketCap`
+2. Fetch all the available tags<br />`git fetch`
+3. Show all the available tags<br />`git tag`
+4. Checkout one of the available tags<br />`git checkout {tag_name}`<br />Example: `git checkout v1.0.0`
+
+
+To switch back to the latest version, use your terminal to:
+1. Navigate to your MMM-CoinMarketCap folder. If you are using the default installation directory, use the command:<br />`cd ~/MagicMirror/modules/MMM-CoinMarketCap`
+2. Checkout the master branch<br />`git checkout master`
 
 ## License
 

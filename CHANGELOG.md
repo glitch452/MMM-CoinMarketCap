@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.2.0] - 2020-10-19
+
+### Added
+- Option to enable colors for graphs (for 1d and 7d graphs only)
+
+### Fixed
+- Sparkline Graphs not updating, showing a straight line (Issue #10)
+
 ## [2.1.0] - 2020-03-10
 
 ### Added
