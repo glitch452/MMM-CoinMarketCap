@@ -2,6 +2,11 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.2.1] - 2020-10-22
+
+### Fixed
+- Currency value display for some locales was removing numeric value (Issues #8 and #11)
+
 ## [2.2.0] - 2020-10-19
 
 ### Added

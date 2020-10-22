@@ -615,14 +615,13 @@ Module.register("MMM-CoinMarketCap", {
 				if (axis.isObject(data.quote[conversion]) && !axis.isNull(data.quote[conversion])) {
 					var price = self.conformNumber(data.quote[conversion].price, currency.significantDigits, currency.decimalPlaces);
 					var priceOptions = { style: "currency", currency: self.config.conversion, useGrouping: currency.usePriceDigitGrouping };
-					priceOptions.minimumFractionDigits = priceOptions.maximumFractionDigits = currency.decimalPlaces; 
-					price = Number(price).toLocaleString(config.language, priceOptions);
-					var regex = /[A-Z]+(.+)/;
-					var matches = regex.exec(price);
-					cell.innerHTML = matches === null ? price : matches[1];
+					priceOptions.minimumFractionDigits = priceOptions.maximumFractionDigits = currency.decimalPlaces;
+					// Localize the price and remove currency label
+					cell.innerHTML = Number(price).toLocaleString(config.language, priceOptions).replace(/[A-Za-z]+/g, '');
+					// Language Codes (BCP 47) https://github.com/libyal/libfwnt/wiki/Language-Code-identifiers
 					if (currency.showCurrencyWithPrice) { cell.innerHTML += " " + self.config.conversion; }
 				} else {
-					cell.innerHTML = "?";	
+					cell.innerHTML = "?";
 				}
 				break;
 			case "change1h":
