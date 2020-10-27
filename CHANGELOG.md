@@ -4,6 +4,7 @@ This project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.3.0] - 2020-10-27
 
+### Added
 - Spanish translation, thanks to [memolfb](https://github.com/memolfb)!
 
 ## [2.2.1] - 2020-10-22
