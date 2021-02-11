@@ -844,6 +844,7 @@ Module.register("MMM-CoinMarketCap", {
 			en: "translations/en.json",
 			it: "translations/it.json",
 			es: "translations/es.json",
+			ca: "translations/ca.json",
 		};
 	},
 
