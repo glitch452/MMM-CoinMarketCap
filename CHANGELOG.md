@@ -2,6 +2,14 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.4.0] - 2021-10-02
+
+### Added
+- Node package files to install dependencies (since request is no longer installed with the latest MagicMirror version)
+- Git Ignore files for images (png, jpg, jpeg) in the logos folder
+- Catalan translation, thanks to [jaumebosch](https://github.com/jaumebosch)!
+- Included nano logos
+
 ## [2.3.0] - 2020-10-27
 
 ### Added

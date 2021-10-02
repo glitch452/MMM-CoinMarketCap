@@ -6,7 +6,7 @@ This module displays cryptocurrency information from the [Coin Market Cap](https
 
 | Status  | Version | Date       | Maintained? | Minimum MagicMirror² Version |
 |:------- |:------- |:---------- |:----------- |:---------------------------- |
-| Working | `2.3.0` | 2020-10-27 | Yes         |`2.2.1`                       |
+| Working | `2.4.0` | 2021-10-02 | Yes         |`2.2.1`                       |
 
 ### Example
 ![Example of MMM-CoinMarketCap](images/sample.png?raw=true "Example screenshot")
@@ -26,6 +26,7 @@ This module displays cryptocurrency information from the [Coin Market Cap](https
 To install the module, use your terminal to:
 1. Navigate to your MagicMirror's modules folder. If you are using the default installation directory, use the command:<br />`cd ~/MagicMirror/modules`
 2. Copy the module to your computer by executing the following command:<br />`git clone https://github.com/glitch452/MMM-CoinMarketCap.git`
+3. Enter the 'MMM-CoinMarketCap' directory and Install the node modules:<br />`cd MMM-CoinMarketCap && npm install`
 
 ## Using the module
 
