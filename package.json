@@ -1,0 +1,27 @@
+{
+	"name": "mmm-coinmarketcap",
+	"version": "2.4.0",
+	"description": "A MagicMirror² module that displays cryptocurrency information from the Coin Market Cap website.",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/glitch452/MMM-CoinMarketCap"
+	},
+	"keywords": [
+		"smart mirror",
+		"magicmirror",
+		"mirror",
+		"module",
+		"crypto currency",
+		"coinmarketcap",
+		"bitcoin"
+	],
+	"author": "David Dearden",
+	"license": "MIT",
+	"bugs": {
+		"url": "https://github.com/glitch452/MMM-CoinMarketCap/issues"
+	},
+	"homepage": "https://github.com/glitch452/MMM-CoinMarketCap#readme",
+	"dependencies": {
+		"request": "^2.88.2"
+	}
+}
