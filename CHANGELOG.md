@@ -2,6 +2,12 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.4.1] - 2021-10-24
+
+### Fixed
+- Prevent duplicate update requests after pausing and resuming the module
+- Revert to using the s2.coinmarketcap.com base for loading images since some are not available on the s3 location
+
 ## [2.4.0] - 2021-10-02
 
 ### Added
