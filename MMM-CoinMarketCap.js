@@ -125,9 +125,8 @@ Module.register("MMM-CoinMarketCap", {
 		self.updateTimer = null;
 		self.lastUpdateTime = new Date(0);
 		self.currencyData = {};
-		self.assetsBaseURL = "https://s3.coinmarketcap.com/";
-		self.logosURLTemplate = self.assetsBaseURL + "static/img/coins/{size}x{size}/{id}.png";
-		self.graphURLTemplate = self.assetsBaseURL + "generated/sparklines/web/{range}d/usd/{id}.png?noCache={noCache}";
+		self.logosURLTemplate = "https://s2.coinmarketcap.com/static/img/coins/{size}x{size}/{id}.png";
+		self.graphURLTemplate = "https://s3.coinmarketcap.com/generated/sparklines/web/{range}d/usd/{id}.png?noCache={noCache}";
 		self.apiBaseURL = "https://pro-api.coinmarketcap.com/";
 		self.apiVersion = "v1/";
 		self.apiListingsEndpoint = "cryptocurrency/map";
@@ -281,6 +280,9 @@ Module.register("MMM-CoinMarketCap", {
 	 */
 	scheduleUpdate: function() {
 		var self = this;
+		if (self.updateTimer) {
+			clearInterval(self.updateTimer);
+		}
 		self.updateTimer = setInterval(function() { self.getAllCurrencyDetails(1); }, self.config.updateInterval);
 		self.log( self.translate("UPDATE_SCHEDULED", { "minutes": (self.config.updateInterval / (1000 * 60)) }) );
 	},
