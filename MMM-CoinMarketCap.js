@@ -281,6 +281,9 @@ Module.register("MMM-CoinMarketCap", {
 	 */
 	scheduleUpdate: function() {
 		var self = this;
+		if (self.updateTimer) {
+			clearInterval(self.updateTimer);
+		}
 		self.updateTimer = setInterval(function() { self.getAllCurrencyDetails(1); }, self.config.updateInterval);
 		self.log( self.translate("UPDATE_SCHEDULED", { "minutes": (self.config.updateInterval / (1000 * 60)) }) );
 	},
