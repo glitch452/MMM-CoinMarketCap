@@ -125,9 +125,8 @@ Module.register("MMM-CoinMarketCap", {
 		self.updateTimer = null;
 		self.lastUpdateTime = new Date(0);
 		self.currencyData = {};
-		self.assetsBaseURL = "https://s3.coinmarketcap.com/";
-		self.logosURLTemplate = self.assetsBaseURL + "static/img/coins/{size}x{size}/{id}.png";
-		self.graphURLTemplate = self.assetsBaseURL + "generated/sparklines/web/{range}d/usd/{id}.png?noCache={noCache}";
+		self.logosURLTemplate = "https://s2.coinmarketcap.com/static/img/coins/{size}x{size}/{id}.png";
+		self.graphURLTemplate = "https://s3.coinmarketcap.com/generated/sparklines/web/{range}d/usd/{id}.png?noCache={noCache}";
 		self.apiBaseURL = "https://pro-api.coinmarketcap.com/";
 		self.apiVersion = "v1/";
 		self.apiListingsEndpoint = "cryptocurrency/map";
