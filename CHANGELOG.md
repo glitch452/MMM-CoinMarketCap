@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## [2.4.2] - 2022-02-02
+
+### Fixed
+
+- Updated graph URL template to get the current graphs from Coin Market Cap (Issue #25)
+
+### Changed
+
+- Applied code formatting with prettier
+
 ## [2.4.1] - 2021-10-24
 
 ### Fixed
