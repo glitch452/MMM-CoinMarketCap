@@ -150,7 +150,7 @@ Module.register("MMM-CoinMarketCap", {
     self.logosURLTemplate =
       "https://s2.coinmarketcap.com/static/img/coins/{size}x{size}/{id}.png";
     self.graphURLTemplate =
-      "https://s3.coinmarketcap.com/generated/sparklines/web/{range}d/usd/{id}.png?noCache={noCache}";
+      "https://s3.coinmarketcap.com/generated/sparklines/web/{range}d/2781/{id}.svg?noCache={noCache}";
     self.apiBaseURL = "https://pro-api.coinmarketcap.com/";
     self.apiVersion = "v1/";
     self.apiListingsEndpoint = "cryptocurrency/map";
